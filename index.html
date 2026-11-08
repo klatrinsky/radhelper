@@ -824,14 +824,21 @@
   const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const line = s => esc(s).replace(/\[\[([^\]]+)\]\]/g, '<span class="try" role="button" tabindex="0" data-q="$1">«$1»</span>');
   fetch("news.md", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
-    let h = "", items = [];
-    t.replace(/\r/g, "").split("\n").forEach(l => {
-      l = l.trim();
-      if (/^# /.test(l)) h = l.slice(2);
-      else if (/^[-*] /.test(l)) items.push(l.slice(2));
+    let blocks = [];
+t.replace(/\r/g, "").split("\n").forEach(l => {
+l = l.trim();
+if (/^# /.test(l)) blocks.push({ h: l.slice(2), items: [] });
+else if (/^[-*] /.test(l)) {
+  if (!blocks.length) blocks.push({ h: "", items: [] });
+  blocks[blocks.length - 1].items.push(l.slice(2));
+}
     });
-    if (!items.length) return;
-    box.innerHTML = (h ? "<h2>" + line(h) + "</h2>" : "") + "<ul>" + items.map(i => "<li>" + line(i) + "</li>").join("") + "</ul>";
+blocks = blocks.filter(b => b.items.length).slice(0, 3);
+if (!blocks.length) return;
+box.innerHTML = blocks.map(b =>
+  (b.h ? "<h2>" + line(b.h) + "</h2>" : "") +
+  "<ul>" + b.items.map(i => "<li>" + line(i) + "</li>").join("") + "</ul>"
+).join("");
     box.hidden = false;
     box.querySelectorAll(".try").forEach(el => {
       const go = () => { q.value = el.dataset.q; q.dispatchEvent(new Event("input")); q.focus(); };
