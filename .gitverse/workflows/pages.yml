@@ -1,0 +1,29 @@
+name: Публикация сайта
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Собрать файлы сайта
+        run: |
+          mkdir _site
+          git archive HEAD | tar -x -C _site
+          test -f _site/index.html
+
+      - name: Upload pages artifact
+        uses: gitverse/upload-pages-artifact@v1.0.0
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: gitverse/deploy-pages@v1.0.0
