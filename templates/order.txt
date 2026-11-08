@@ -56,6 +56,9 @@ xr-feet.md
 xr-feet-hallux.md
 xr-feet-flat.md
 
+# Денситометрия
+dxa.md
+
 # Маммография
 mmg.md
 mmg-mastectomy.md
