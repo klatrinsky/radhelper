@@ -194,11 +194,10 @@
   /* «Что нового» под строкой поиска — только на пустой главной. Текст — в news.md */
   .news { display: none; }
   body.home .news:not([hidden]) { display: block; max-width: 620px; margin: 18px auto 0; padding: 0 16px;
-    color: var(--muted); font-size: 0.95rem; line-height: 1.45; }
-  .news h2 { margin: 0 0 6px; font-size: 0.85rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    color: var(--muted); font-size: 0.85rem; line-height: 1.45; }
+  .news h2 { margin: 0 0 6px; font-size: 0.78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
   .news ul { margin: 0; padding-left: 1.1em; }
   .news li { margin: 3px 0; }
-  .news ul + h2 { margin-top: 14px; }
   /* на невысоких экранах поднять всё выше, чтобы «Что нового» не залезало под подвал */
   @media (max-height: 900px) { body.home header.top { padding-top: 12vh; } }
   .news .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); }
@@ -648,7 +647,7 @@
       const now = get(crit + "% " + r.k), was = get("было " + r.k);
       if (!isFinite(now) || !isFinite(was)) return;
       const d = r1(now - was);
-      res.push({ d, sig: Math.abs(d) >= r.lsc, text: r.where(tg) + " на " + pct(d) });
+      res.push({ d, sig: Math.abs(d) >= r.lsc, where: r.where(tg), pct: pct(d) });
     });
     return res;
   }
@@ -659,23 +658,25 @@
     "КРИТЕРИЙ": { inputs: DXA_IN, raw: true, text: (v, tg) => {
       const c = dxa(v, tg).crit;
       return c ? c + "-критерий" : "введите возраст"; } },
-    "ПРИРОСТ":  { inputs: DXA_IN, raw: true, text: (v, tg) =>
-      (dxaChanges(v, tg) || []).filter(x => x.sig && x.d > 0).map(x => x.text).join(", ") },
-    "ПОТЕРЯ":   { inputs: DXA_IN, raw: true, text: (v, tg) =>
-      (dxaChanges(v, tg) || []).filter(x => x.sig && x.d < 0).map(x => x.text).join(", ") },
+    // «положительная динамика в поясничном отделе позвоночника в виде прироста значений T-критерия на 3,1%, отрицательная …»
+    "ДИНАМИКА": { inputs: DXA_IN, raw: true, text: (v, tg) => {
+      const crit = dxa(v, tg).crit;
+      return (dxaChanges(v, tg) || []).filter(x => x.sig).map(x => (x.d > 0 ? "положительная" : "отрицательная") +
+        " динамика " + x.where + " в виде " + (x.d > 0 ? "прироста" : "снижения") + " значений " + crit + "-критерия на " + x.pct).join(", ");
+    } },
     "ЧЕРЕЗ 1 ГОД":  { inputs: [], raw: true, text: inYears(1) },
     "ЧЕРЕЗ 2 ГОДА": { inputs: [], raw: true, text: inYears(2) },
-    // невидимый: ставит {#МПКТ: не введено|норма|остеопения|остеопороз|в пределах ожидаемых|ниже ожидаемых},
+    // невидимый: ставит {#МПК: не введено|норма|остеопения|остеопороз|в пределах ожидаемых|ниже ожидаемых},
     // {#контроль через: 1 год|2 года}, {#консультация: не введено|гериатр|эндокринолог|нет}, {#динамика: …}
     "ДЕНСИТОМЕТРИЯ": { inputs: DXA_IN, hidden: true, uses: DXA_USES, set: (v, tg) => {
       const { crit, age, regions, get } = dxa(v, tg);
       const out = { "консультация": !isFinite(age) ? 0 : age >= 75 ? 1 : 2 };
       const vals = crit ? regions.map(r => get(crit + " " + r.k)).filter(isFinite).map(r1) : [];
-      if (!vals.length) Object.assign(out, { "МПКТ": 0, "контроль через": 0 });
+      if (!vals.length) Object.assign(out, { "МПК": 0, "контроль через": 0 });
       else {
         const w = Math.min(...vals);
         const dx = crit === "T" ? (w >= -1 ? 1 : w > -2.5 ? 2 : 3) : (w > -2 ? 4 : 5);
-        Object.assign(out, { "МПКТ": dx, "контроль через": dx === 1 || dx === 4 ? 1 : 0 });
+        Object.assign(out, { "МПК": dx, "контроль через": dx === 1 || dx === 4 ? 1 : 0 });
         if (dx === 1 || dx === 4) out["консультация"] = 3;          // норма — консультацию не пишем
       }
       // TBS — только у женщин в менопаузе: {#TBS: строка|}. Ставим только при смене пола/менопаузы, чтобы не перебивать ручной выбор
