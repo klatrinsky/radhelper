@@ -193,10 +193,11 @@
   /* «Что нового» под строкой поиска — только на пустой главной. Текст — в news.md */
   .news { display: none; }
   body.home .news:not([hidden]) { display: block; max-width: 620px; margin: 18px auto 0; padding: 0 16px;
-    color: var(--muted); font-size: 0.85rem; line-height: 1.45; }
-  .news h2 { margin: 0 0 6px; font-size: 0.78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    color: var(--muted); font-size: 0.95rem; line-height: 1.45; }
+  .news h2 { margin: 0 0 6px; font-size: 0.85rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
   .news ul { margin: 0; padding-left: 1.1em; }
   .news li { margin: 3px 0; }
+  .news ul + h2 { margin-top: 14px; }
   /* на невысоких экранах поднять всё выше, чтобы «Что нового» не залезало под подвал */
   @media (max-height: 900px) { body.home header.top { padding-top: 12vh; } }
   .news .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); }
