@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 380" role="img" aria-labelledby="t">
+  <title id="t">Алгоритм: была ли реакция на контраст раньше</title>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; fill: #1f2328; }
+    .q { fill: #ffffff; stroke: #9aa3ad; stroke-width: 1.5; }
+    .qt { font-size: 14px; font-weight: 600; }
+    .ln { stroke: #5f6670; stroke-width: 2; fill: none; marker-end: url(#a); }
+    .ah { fill: #5f6670; }
+    .pill { fill: #eef1f4; stroke: #5f6670; stroke-width: 1; }
+    .pt { font-size: 12.5px; font-weight: 600; fill: #1f2328; }
+    .go { fill: #e6f4ea; stroke: #1e7b34; stroke-width: 2; }
+    .got { fill: #14532d; font-size: 15px; font-weight: 700; }
+    .stop { fill: #fdecea; stroke: #b42318; stroke-width: 2.5; }
+    .stopt { fill: #8f1c12; font-size: 15px; font-weight: 700; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6e8eb; }
+      .q { fill: #1b1e22; stroke: #5f6670; }
+      .ln { stroke: #9aa3ad; } .ah { fill: #9aa3ad; }
+      .pill { fill: #23272d; stroke: #9aa3ad; } .pt { fill: #e6e8eb; }
+      .go { fill: #13291b; stroke: #4caf6a; } .got { fill: #a7e3b7; }
+      .stop { fill: #331512; stroke: #ff8a80; } .stopt { fill: #ffb4ab; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="ah" d="M0 0 L10 5 L0 10 z"/>
+    </marker>
+  </defs>
+
+  <!-- Вопрос 1 -->
+  <rect class="q" x="15" y="10" width="330" height="58" rx="12"/>
+  <text class="qt" x="180" y="34" text-anchor="middle">Вы раньше делали исследования</text>
+  <text class="qt" x="180" y="54" text-anchor="middle">с контрастным веществом?</text>
+
+  <!-- Вопрос 2 -->
+  <rect class="q" x="140" y="132" width="205" height="58" rx="12"/>
+  <text class="qt" x="242" y="156" text-anchor="middle">Как вы перенесли</text>
+  <text class="qt" x="242" y="176" text-anchor="middle">исследование?</text>
+
+  <!-- Стрелки -->
+  <path class="ln" d="M55 68 V286"/>
+  <path class="ln" d="M242 68 V128"/>
+  <path class="ln" d="M172 190 V286"/>
+  <path class="ln" d="M300 190 V286"/>
+
+  <!-- Ответы -->
+  <rect class="pill" x="31" y="160" width="48" height="24" rx="12"/>
+  <text class="pt" x="55" y="176.5" text-anchor="middle">Нет</text>
+  <rect class="pill" x="220" y="86" width="44" height="24" rx="12"/>
+  <text class="pt" x="242" y="102.5" text-anchor="middle">Да</text>
+  <rect class="pill" x="104" y="214" width="136" height="24" rx="12"/>
+  <text class="pt" x="172" y="230.5" text-anchor="middle">Хорошо / не помню</text>
+  <rect class="pill" x="246" y="246" width="108" height="24" rx="12"/>
+  <text class="pt" x="300" y="262.5" text-anchor="middle">Была реакция</text>
+
+  <!-- Итоги -->
+  <rect class="go" x="15" y="290" width="180" height="76" rx="12"/>
+  <text class="got" x="105" y="323" text-anchor="middle">Продолжаем</text>
+  <text class="got" x="105" y="344" text-anchor="middle">исследование</text>
+
+  <rect class="stop" x="205" y="290" width="140" height="76" rx="12"/>
+  <text class="stopt" x="275" y="323" text-anchor="middle">Стоп.</text>
+  <text class="stopt" x="275" y="344" text-anchor="middle">Сообщаем врачу</text>
+</svg>
