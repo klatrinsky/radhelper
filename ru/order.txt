@@ -19,3 +19,4 @@ hand-arthritis.md
 birads.md
 birads-lexicon.md
 contrast-questions.md
+catheter-faq.md
