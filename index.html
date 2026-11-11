@@ -68,6 +68,7 @@
   li { margin: 3px 0; }
   code.formula { display: block; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.88rem;
     background: var(--head); padding: 8px 10px; border-radius: 8px; overflow-x: auto; white-space: nowrap; }
+  img.pic { display: block; width: 100%; max-width: 440px; height: auto; margin: 10px auto; }
   code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.9em; }
   .src { margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 0.8rem; color: var(--muted); }
   a { color: var(--accent); }
@@ -311,6 +312,9 @@ if (window.RH_LAB) {
         continue;
       }
       if (/^[-*] /.test(t)) { flushP(); list.push(t.slice(2)); continue; }
+      // картинка: ![подпись](img/файл.svg) — отдельной строкой
+      const im = t.match(/^!\[([^\]]*)\]\(((?:img\/|https:\/\/)[^)\s]+)\)$/);
+      if (im) { flush(); html += '<img class="pic" src="' + esc(im[2]) + '" alt="' + esc(im[1]) + '" loading="lazy">'; continue; }
       if (/^`[^`]+`$/.test(t)) { flush(); html += '<code class="formula">' + esc(t.slice(1, -1)) + "</code>"; continue; }
       if (/^(Источник|Radiopaedia):/.test(t)) { flush(); html += '<p class="src">' + inline(t) + "</p>"; continue; }
       flushL(); para.push(t);
