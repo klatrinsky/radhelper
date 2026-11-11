@@ -222,6 +222,7 @@ window.RH_LAB = /(^|[?&])lab(=|&|$)/i.test(location.search.slice(1));
 
 <header class="top">
   <img class="cat" src="img/vzhuh.jpg" alt="Кот-волшебник: вжух" width="240">
+  <script>if (window.RH_LAB) { const c = document.querySelector("img.cat"); c.src = "img/doctor-cat.jpg"; c.alt = "Кот в медицинском халате"; }</script>
   <div class="wrap bar">
     <input id="q" type="search" placeholder="Что описываем?" autofocus autocomplete="off" enterkeyhint="search" aria-label="Поиск">
   </div>
