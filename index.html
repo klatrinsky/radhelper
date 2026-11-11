@@ -68,6 +68,23 @@
   li { margin: 3px 0; }
   code.formula { display: block; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.88rem;
     background: var(--head); padding: 8px 10px; border-radius: 8px; overflow-x: auto; white-space: nowrap; }
+  /* Виджеты (widgets.js) */
+  .widget { margin: 12px 0 4px; display: flex; flex-direction: column; gap: 10px; }
+  .w-pane { display: flex; flex-direction: column; gap: 8px; }
+  .w-pane[hidden] { display: none; }
+  .w-label { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+  .w-conc { flex-wrap: nowrap; }
+  .w-conc .pick { flex: 1 1 0; min-width: 0; max-width: 84px; text-align: center; font-size: 1rem; padding: 10px 4px; }
+  .w-input { height: 48px; padding: 0 12px; font-size: 1.1rem; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); color: var(--ink); width: 100%; max-width: 220px; }
+  .w-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .w-out { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-top: 6px; padding: 12px 14px;
+    border-radius: 12px; background: var(--head); }
+  .w-num { font-size: 2.2rem; font-weight: 700; line-height: 1.1; color: var(--accent); }
+  .w-hint { font-size: 0.9rem; color: var(--muted); }
+  .w-out.bad .w-hint { color: var(--err); font-weight: 600; }
+  .w-rule { font-size: 0.78rem; color: var(--muted); }
+  .w-stub { margin: 4px 0; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); }
   img.pic { display: block; width: 100%; max-width: 440px; height: auto; margin: 10px auto; }
   code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.9em; }
   .src { margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 0.8rem; color: var(--muted); }
@@ -249,6 +266,7 @@ if (window.RH_LAB) {
 </script>
 <div class="toast" id="toast" hidden></div>
 <script src="findings.js"></script>
+<script src="widgets.js"></script>
 
 <script>
 /* =====================================================================
@@ -297,6 +315,8 @@ if (window.RH_LAB) {
       // служебные строки раздела: на экран не выводятся
       if (/^Для:/i.test(t)) { flush(); out.who = t.replace(/^Для:\s*/i, "").trim().toLowerCase().replace(/ё/g, "е"); continue; }
       if (/^Слова:/i.test(t)) { flush(); out.words += " " + t.replace(/^Слова:\s*/i, ""); continue; }
+      // калькулятор из widgets.js: «Виджет: имя»
+      if (/^Виджет:/i.test(t)) { flush(); html += '<div class="widget" data-widget="' + esc(t.replace(/^Виджет:\s*/i, "").trim()) + '"></div>'; continue; }
       if (/^##+ /.test(t)) { flush(); html += "<h3>" + inline(t.replace(/^##+ /, "")) + "</h3>"; continue; }
       if (/^> ?/.test(t) && !out.sub && !html) { flush(); out.sub = t.replace(/^> ?/, ""); continue; }
       if (t.startsWith("|")) {
@@ -355,6 +375,10 @@ if (window.RH_LAB) {
         (d.sub ? '<span class="s">' + inline(d.sub) + "</span>" : "") + "</summary>" +
         '<div class="body">' + d.html + "</div>";
       listEl.appendChild(sec);
+    });
+    listEl.querySelectorAll(".widget").forEach(el => {
+      const fn = (window.RH_WIDGETS || {})[el.dataset.widget];
+      if (fn) fn(el); else el.innerHTML = '<p class="err">Нет виджета «' + esc(el.dataset.widget) + '» в widgets.js</p>';
     });
     setup();
     if (!window.RH_LAB) templates(parsed);   // шаблоны заключений лаборанту не нужны
