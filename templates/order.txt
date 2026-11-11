@@ -19,8 +19,10 @@ ct-abdomen.md
 ct-abdomen-short.md
 ct-kidneys.md
 ct-kidneys-contrast.md
+ct-voiding-urethrography.md
 ct-pelvis-m.md
 ct-pelvis-f.md
+ct-cap.md
 cta-legs.md
 cta-legs-short.md
 cta-legs-aaa.md
@@ -55,6 +57,7 @@ xr-hand-erosive.md
 xr-feet.md
 xr-feet-hallux.md
 xr-feet-flat.md
+xr-urography.md
 
 # Денситометрия
 dxa.md
