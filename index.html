@@ -389,7 +389,8 @@ if (window.RH_LAB) {
   /* ---------- Поиск, «раскрыть всё», ссылки на раздел ---------- */
   function setup() {
     const secs = Array.from(document.querySelectorAll("details.sec"));
-    const norm = s => s.toLowerCase().replace(/ё/g, "е");
+    // ё = е, ъ = ь: «обьем» найдёт «объём» (твёрдый знак на клавиатуре никто не помнит)
+    const norm = s => s.toLowerCase().replace(/ё/g, "е").replace(/ъ/g, "ь");
     const texts = secs.map(s => norm(s.textContent + " " + (s.dataset.words || "")));
 
     q.addEventListener("input", () => {
