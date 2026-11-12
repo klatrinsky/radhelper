@@ -1020,13 +1020,16 @@ if (window.RH_LAB) {
 </script>
 <script>
 /* «Что нового»: читает news.md. Строка «# …» — заголовок, строки «- …» — пункты,
-   [[слово]] — кликабельно: подставляет слово в поиск. */
+   [[слово]] — кликабельно: подставляет слово в поиск; [текст](?lab) или [текст](https://…) — ссылка. */
 (function () {
   const box = document.getElementById("news");
   const q = document.getElementById("q");
   if (!box || location.protocol === "file:") return;
   const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const line = s => esc(s).replace(/\[\[([^\]]+)\]\]/g, '<span class="try" role="button" tabindex="0" data-q="$1">«$1»</span>');
+  const line = s => esc(s)
+    .replace(/\[\[([^\]]+)\]\]/g, '<span class="try" role="button" tabindex="0" data-q="$1">«$1»</span>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\[([^\]]+)\]\(((?:\?|\/)[^)\s]*)\)/g, '<a href="$2">$1</a>');   // ссылка внутри сайта, например ?lab
   fetch(window.RH_LAB ? "news-lab.md" : "news.md", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
     let blocks = [];
 t.replace(/\r/g, "").split("\n").forEach(l => {
