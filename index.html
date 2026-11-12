@@ -84,6 +84,14 @@
   .w-hint { font-size: 0.9rem; color: var(--muted); }
   .w-out.bad .w-hint { color: var(--err); font-weight: 600; }
   .w-rule { font-size: 0.78rem; color: var(--muted); }
+  .w-field { display: flex; flex-direction: column; gap: 8px; }
+  .w-field[hidden], .w-field-note[hidden] { display: none; }
+  .w-field-note { font-size: 0.8rem; color: var(--muted); margin-top: -2px; }
+  .w-zone .pick { font-size: 0.95rem; padding: 10px 12px; }
+  .w-a-more { display: flex; flex-direction: column; gap: 6px; }
+  .w-a-more:empty { display: none; }
+  .w-line { font-size: 1.05rem; }
+  .w-warn { padding: 8px 12px; border-radius: 10px; border: 2px solid var(--err); color: var(--err); font-weight: 700; }
   .w-stub { margin: 4px 0; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); }
   img.pic { display: block; width: 100%; max-width: 440px; height: auto; margin: 10px auto; }
   code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.9em; }
