@@ -239,6 +239,25 @@
   @media (max-height: 900px) { body.home header.top { padding-top: 12vh; } }
   .news .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); }
 
+  /* Архив новостей: кнопка в подвале открывает окно со всеми выпусками из news.md */
+  .linkbtn { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
+  .linkbtn[hidden] { display: none; }
+  .news-arch { width: min(620px, calc(100vw - 24px)); max-height: min(80vh, 80dvh); padding: 0;
+    border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); }
+  .news-arch::backdrop { background: rgba(0, 0, 0, .45); }
+  .news-arch-h { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 10px 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
+  .news-arch-h b { font-size: 0.85rem; letter-spacing: .06em; text-transform: uppercase; }
+  .news-arch-x { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); color: var(--ink); font-size: 1rem; cursor: pointer; }
+  .news-all { padding: 12px 16px 18px; font-size: 0.95rem; line-height: 1.45; }
+  .news-all h2 { margin: 0 0 6px; font-size: 0.85rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .news-all ul { margin: 0; padding-left: 1.1em; }
+  .news-all li { margin: 3px 0; }
+  .news-all ul + h2 { margin-top: 16px; }
+  .news-all a { color: var(--accent); }
+  .news-all .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); }
+
   /* Кот — только на пустой главной, после ввода запроса прячется */
   .cat { display: none; }
   body.home .cat { display: block; width: min(240px, 60vw); margin: 0 auto 12px; border-radius: 12px; mix-blend-mode: multiply; }
@@ -275,7 +294,13 @@ window.RH_LAB = /(^|[?&])lab(=|&|$)/i.test(location.search.slice(1));
 <footer class="wrap">
   <p>Справочный материал для врачей и ординаторов, не клиническая рекомендация.</p>
   <p>Поругать автора: <a href="https://t.me/klatrinsky" target="_blank" rel="noopener">Telegram</a> · <a href="mailto:klatrinsky@gmail.com?subject=rad-helper%3A%20%D0%B7%D0%B0%D0%BC%D0%B5%D1%87%D0%B0%D0%BD%D0%B8%D0%B5">Email</a></p>
+  <p><button type="button" class="linkbtn" id="newsArchiveBtn" hidden>Архив новостей</button></p>
 </footer>
+<dialog class="news-arch" id="newsArchive" aria-labelledby="newsArchiveTitle">
+  <div class="news-arch-h"><b id="newsArchiveTitle">Архив новостей</b>
+    <button type="button" class="news-arch-x" aria-label="Закрыть">✕</button></div>
+  <div class="news-all" id="newsArchiveBody"></div>
+</dialog>
 <script>
 if (window.RH_LAB) {
   document.title = "Помощник лаборанта";
@@ -1020,38 +1045,62 @@ if (window.RH_LAB) {
 </script>
 <script>
 /* «Что нового»: читает news.md. Строка «# …» — заголовок, строки «- …» — пункты,
-   [[слово]] — кликабельно: подставляет слово в поиск; [текст](?lab) или [текст](https://…) — ссылка. */
+   [[слово]] — кликабельно: подставляет слово в поиск; [текст](?lab) или [текст](https://…) — ссылка.
+   На главной — три верхних выпуска. Если выпусков больше, в подвале появляется «Архив новостей»:
+   окно со всеми выпусками файла. Старые новости из news.md не удаляйте — они уходят в архив сами. */
 (function () {
+  const HOME = 3;
   const box = document.getElementById("news");
   const q = document.getElementById("q");
+  const btn = document.getElementById("newsArchiveBtn");
+  const dlg = document.getElementById("newsArchive");
+  const all = document.getElementById("newsArchiveBody");
   if (!box || location.protocol === "file:") return;
   const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const line = s => esc(s)
     .replace(/\[\[([^\]]+)\]\]/g, '<span class="try" role="button" tabindex="0" data-q="$1">«$1»</span>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/\[([^\]]+)\]\(((?:\?|\/)[^)\s]*)\)/g, '<a href="$2">$1</a>');   // ссылка внутри сайта, например ?lab
+  const html = blocks => blocks.map(b =>
+    (b.h ? "<h2>" + line(b.h) + "</h2>" : "") +
+    "<ul>" + b.items.map(i => "<li>" + line(i) + "</li>").join("") + "</ul>"
+  ).join("");
+
+  // [[слово]] — подставить в поиск (из архива — сначала закрыть окно)
+  function tryHandlers(root, before) {
+    const go = el => { if (before) before(); q.value = el.dataset.q; q.dispatchEvent(new Event("input")); q.focus(); };
+    root.addEventListener("click", e => { const el = e.target.closest(".try"); if (el) go(el); });
+    root.addEventListener("keydown", e => { const el = e.target.closest(".try"); if (el && e.key === "Enter") go(el); });
+  }
+  const close = () => { if (dlg.open) dlg.close(); };
+
   fetch(window.RH_LAB ? "news-lab.md" : "news.md", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
     let blocks = [];
-t.replace(/\r/g, "").split("\n").forEach(l => {
-l = l.trim();
-if (/^# /.test(l)) blocks.push({ h: l.slice(2), items: [] });
-else if (/^[-*] /.test(l)) {
-  if (!blocks.length) blocks.push({ h: "", items: [] });
-  blocks[blocks.length - 1].items.push(l.slice(2));
-}
+    t.replace(/\r/g, "").split("\n").forEach(l => {
+      l = l.trim();
+      if (/^# /.test(l)) blocks.push({ h: l.slice(2), items: [] });
+      else if (/^[-*] /.test(l)) {
+        if (!blocks.length) blocks.push({ h: "", items: [] });
+        blocks[blocks.length - 1].items.push(l.slice(2));
+      }
     });
-blocks = blocks.filter(b => b.items.length).slice(0, 3);
-if (!blocks.length) return;
-box.innerHTML = blocks.map(b =>
-  (b.h ? "<h2>" + line(b.h) + "</h2>" : "") +
-  "<ul>" + b.items.map(i => "<li>" + line(i) + "</li>").join("") + "</ul>"
-).join("");
+    blocks = blocks.filter(b => b.items.length);
+    if (!blocks.length) return;
+
+    box.innerHTML = html(blocks.slice(0, HOME));
     box.hidden = false;
-    box.querySelectorAll(".try").forEach(el => {
-      const go = () => { q.value = el.dataset.q; q.dispatchEvent(new Event("input")); q.focus(); };
-      el.addEventListener("click", go);
-      el.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+    tryHandlers(box);
+
+    if (blocks.length <= HOME || !dlg || !btn) return;   // архивировать пока нечего
+    all.innerHTML = html(blocks);
+    tryHandlers(all, close);
+    btn.hidden = false;
+    btn.addEventListener("click", () => {
+      if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
+      dlg.scrollTop = 0;
     });
+    dlg.querySelector(".news-arch-x").addEventListener("click", () => { close(); dlg.removeAttribute("open"); });
+    dlg.addEventListener("click", e => { if (e.target === dlg) close(); });   // клик мимо окна
   }).catch(() => {});
 })();
 </script>
