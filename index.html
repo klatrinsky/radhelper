@@ -92,6 +92,17 @@
   .w-a-more:empty { display: none; }
   .w-line { font-size: 1.05rem; }
   .w-warn { padding: 8px 12px; border-radius: 10px; border: 2px solid var(--err); color: var(--err); font-weight: 700; }
+  .w-rows { display: flex; flex-direction: column; gap: 8px; }
+  .w-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 12px; }
+  .w-row .w-sel { flex: 1 1 100%; min-width: 0; max-width: none; font-size: 1rem; padding: 0 8px; }
+  .w-row .w-dlp { flex: 1 1 auto; max-width: 200px; }
+  .w-row .w-unit { color: var(--muted); font-size: 0.9rem; margin-right: auto; }
+  .w-del { flex: 0 0 40px; height: 48px; border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+    color: var(--muted); font-size: 1.3rem; cursor: pointer; }
+  .w-del[hidden] { visibility: hidden; display: block; }
+  .w-add { align-self: flex-start; }
+  .w-small { font-size: 0.9rem; color: var(--muted); }
+  .w-rule a { color: inherit; }
   .w-stub { margin: 4px 0; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); }
   img.pic { display: block; width: 100%; max-width: 440px; height: auto; margin: 10px auto; }
   code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.9em; }

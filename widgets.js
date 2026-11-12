@@ -164,3 +164,82 @@ RH_WIDGETS["contrast-volume"] = function (el) {
   showPlain();
   showAngio();
 };
+
+/* Эффективная доза КТ по DLP — МУ 2.6.1.3584-19 (изменения в МУ 2.6.1.2944-11), таблица 6.1, взрослые.
+   E = Σ DLPᵢ × kᵢ (формула 6.7): каждое сканирование — своя строка со своей областью.
+   Фантом (Head 16 / Body 32) указан в протоколе дозы аппарата и должен совпадать с подписью области. */
+RH_WIDGETS["dose-dlp"] = function (el) {
+  const REGIONS = [
+    { id: "head",      name: "Голова",                     ph: "Head 16", k: 0.0014, t: "0,0014" },
+    { id: "neck",      name: "Шея, в т. ч. КТА БЦА",       ph: "Head 16", k: 0.0060, t: "0,0060" },
+    { id: "headneck",  name: "Голова + шея",               ph: "Head 16", k: 0.0025, t: "0,0025" },
+    { id: "chest",     name: "Грудная клетка",             ph: "Body 32", k: 0.012, t: "0,012" },
+    { id: "abd",       name: "Брюшная полость",            ph: "Body 32", k: 0.014, t: "0,014" },
+    { id: "pelvis",    name: "Таз",                        ph: "Body 32", k: 0.015, t: "0,015" },
+    { id: "ch-abd",    name: "Грудь + живот",              ph: "Body 32", k: 0.013, t: "0,013" },
+    { id: "abd-pel",   name: "Живот + таз",                ph: "Body 32", k: 0.015, t: "0,015" },
+    { id: "ch-abd-pel",name: "Грудь + живот + таз",        ph: "Body 32", k: 0.014, t: "0,014" },
+    { id: "legs",      name: "Нижние конечности",          ph: "Body 32", k: 0.00020, t: "0,00020" },
+    { id: "whole",     name: "Всё тело",                   ph: "Body 32", k: 0.017, t: "0,017" },
+  ];
+  const SRC = "https://legalacts.ru/doc/mu-2613584-19-261-ioniziruiushchee-izluchenie-radiatsionnaja-bezopasnost-izmenenija-v/";
+  const dec = (n, d) => n.toFixed(d).replace(".", ",");
+  
+  el.innerHTML =
+    '<div class="w-label">Каждое сканирование из протокола дозы — отдельной строкой: область и её DLP</div>' +
+    '<div class="w-rows"></div>' +
+    '<button type="button" class="pick w-add">+ ещё область</button>' +
+    '<div class="w-out" aria-live="polite"></div>' +
+    '<div class="w-a-more w-sum"></div>' +
+    '<div class="w-rule">Фантом в скобках должен совпадать с протоколом дозы на аппарате (Head 16 / Body 32). ' +
+      'Не совпадает — эта таблица не подходит, сообщите врачу.<br>' +
+      'Источник: <a href="' + SRC + '" target="_blank" rel="noopener">МУ 2.6.1.3584-19 (изменения в МУ 2.6.1.2944-11), таблица 6.1, взрослые</a>.</div>';
+
+  const rows = el.querySelector(".w-rows"), out = el.querySelector(".w-out"), sum = el.querySelector(".w-sum");
+  let n = 0;
+
+  function addRow() {
+    const id = "w-dlp-" + (++n);
+    const r = document.createElement("div");
+    r.className = "w-row";
+    r.innerHTML =
+      '<select class="w-input w-sel" aria-label="Область">' +
+        '<option value="">Область…</option>' +
+        REGIONS.map(x => '<option value="' + x.id + '">' + x.name + " (" + x.ph + ")</option>").join("") +
+      "</select>" +
+      '<input id="' + id + '" class="w-input w-dlp" type="text" inputmode="decimal" autocomplete="off" placeholder="DLP" aria-label="DLP, мГр·см">' +
+      '<span class="w-unit">мГр·см</span>' +
+      '<button type="button" class="w-del" aria-label="Убрать строку">×</button>';
+    r.querySelector(".w-sel").addEventListener("change", show);
+    r.querySelector(".w-dlp").addEventListener("input", show);
+    r.querySelector(".w-del").addEventListener("click", () => { r.remove(); show(); });
+    rows.appendChild(r);
+    show();
+  }
+
+  function show() {
+    const list = Array.from(rows.querySelectorAll(".w-row"));
+    list.forEach(r => { r.querySelector(".w-del").hidden = list.length < 2; });
+    out.classList.remove("bad");
+    sum.innerHTML = "";
+    let total = 0, used = [], err = "";
+    list.forEach(r => {
+      const reg = REGIONS.find(x => x.id === r.querySelector(".w-sel").value);
+      const raw = r.querySelector(".w-dlp").value.trim().replace(",", ".");
+      if (!reg && !raw) return;                                        // пустая строка — пропускаем
+      if (!reg) { err = err || "выберите область"; return; }
+      if (!raw) { err = err || "введите DLP"; return; }
+      if (!/^\d+(\.\d+)?$/.test(raw) || +raw <= 0 || +raw > 20000) { err = "Проверьте DLP: нужно число в мГр·см"; return; }
+      const e = +raw * reg.k;
+      total += e;
+      used.push(reg.name + ": " + dec(+raw, raw.includes(".") ? 1 : 0) + " × " + reg.t + " = " + dec(e, 2) + " мЗв");
+    });
+    if (err === "Проверьте DLP: нужно число в мГр·см") { out.classList.add("bad"); out.innerHTML = '<span class="w-hint">' + err + "</span>"; return; }
+    if (!used.length || err) { out.innerHTML = '<span class="w-num">—</span><span class="w-hint">' + (err || "выберите область и введите DLP") + "</span>"; return; }
+    out.innerHTML = '<span class="w-num">' + dec(total, 2) + " мЗв</span>";
+    sum.innerHTML = used.map(t => '<div class="w-line w-small">' + t + "</div>").join("");
+  }
+
+  el.querySelector(".w-add").addEventListener("click", addRow);
+  addRow();
+};
