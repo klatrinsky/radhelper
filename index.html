@@ -118,6 +118,8 @@
   .w-steps ol { margin: 6px 0 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; }
   .w-stub { margin: 4px 0; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); }
   img.pic { display: block; width: 100%; max-width: 440px; height: auto; margin: 10px auto; }
+  .pics { display: flex; gap: 8px; align-items: flex-start; max-width: 640px; margin: 10px auto; }
+  .pics img.pic { flex: 1 1 0; min-width: 0; margin: 0; border-radius: 12px; }
   code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.9em; }
   .src { margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 0.8rem; color: var(--muted); }
   a { color: var(--accent); }
@@ -409,7 +411,8 @@ if (window.RH_LAB) {
       flushL(); para.push(t);
     }
     flush();
-    out.html = html;
+    // две и больше картинок подряд — в ряд (на узком экране тоже)
+    out.html = html.replace(/(?:<img class="pic"[^>]*>){2,}/g, m => '<div class="pics">' + m + "</div>");
     return out;
   }
 
