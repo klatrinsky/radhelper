@@ -243,3 +243,234 @@ RH_WIDGETS["dose-dlp"] = function (el) {
   el.querySelector(".w-add").addEventListener("click", addRow);
   addRow();
 };
+
+/* Разбор исследования: получилось ли исследование.
+   Пороги — из литературы, источники в карточке ru/quality.md:
+   артерии: > 200 HU диагностично (Horehledova 2018), 250 HU — общепринятый «хороший» уровень (Radiopaedia, КТ-ангиография лёгочных артерий);
+   ТЭЛА: лёгочный ствол 210–300 HU по разным работам, 250 — общепринятый; аорта ярче ствола — поздно;
+   ноги: аорта > 200 HU (Horehledova 2018); артерии голеней не видны — болюс обогнали;
+   БЦА: сонная − яремная ≤ 50 HU — венозная контаминация, запуск поздно (Kim 2010);
+   живот, артериальная: аорта 290–360 HU типично (Radiopaedia, late arterial phase), > 280 HU — оптимально; < 200 — слабо;
+   живот, венозная: печень > 110 HU (Radiopaedia, portal venous phase), приемлемо от 92 HU (опрос радиологов, цит. по Duke); пёстрая селезёнка — ещё артериальная (LI-RADS);
+   почки: паренхиматозная — почка однородная, «двухцветная» = рано (Radiopaedia, CT renal mass);
+   грудная клетка: HU-порога для рутинной КТ в литературе нет — чек-лист ошибок.
+   MAX_HU 1000 — не порог качества, а защита от опечатки / ROI на кальцинате.
+   Поле: { k, label, opt — необязательное, check — галочка «вижу проблему», fix — что делать }. */
+RH_WIDGETS["quality-check"] = function (el) {
+  const hu = (k, label, opt) => ({ k, label, opt });
+  const chk = (k, label, fix, plan) => ({ k, label, check: true, fix, plan });
+  const CHEST = [
+    chk("apex", "Верхушки лёгких обрезаны", "Начинать на 2–3 см выше ключиц."),
+    chk("base", "Задние синусы обрезаны", "Заканчивать ниже задних синусов. Смотреть на боковой топограмме."),
+    chk("breath", "Лёгкие «смазаны» дыханием", "«Вдохнуть и не дышать». Убедиться, что понял."),
+    chk("arms", "Полосы от рук", "Руки за голову."),
+  ];
+  const ZONES = [
+    { id: "bca",   name: "БЦА",   fields: [hu("a", "Общая сонная артерия, HU"), hu("b", "Яремная вена, HU (можно не мерить)", true), chk("streak", "Полосы от вен у дуги аорты")], rule: "bca" },
+    { id: "pe",    name: "ТЭЛА",  fields: [hu("a", "Лёгочный ствол, HU"), hu("b", "Аорта, HU (можно не мерить)", true)], rule: "pe" },
+    { id: "aorta", name: "Аорта", fields: [hu("a", "Аорта, HU")], rule: "artery" },
+    { id: "arms",  name: "Руки",  fields: [hu("a", "Плечевая артерия, HU")], rule: "artery" },
+    { id: "legs",  name: "Ноги",  fields: [hu("a", "Брюшная аорта, HU"), chk("shin", "Артерии голеней плохо видны")], rule: "legs" },
+    { id: "abd",   name: "Живот", phases: [
+      { id: "art", name: "Артериальная", fields: [hu("a", "Аорта на уровне чревного ствола, HU")], rule: "abdArt" },
+      { id: "ven", name: "Венозная", when: "60–75 с", fields: [hu("a", "Печень, HU"), chk("spleen", "Селезёнка пёстрая")], rule: "abdVen" },
+    ] },
+    { id: "kid",   name: "Почки", phases: [
+      { id: "par", name: "Паренхиматозная", when: "80–120 с", fields: [
+        chk("two", "Почка «двухцветная»: край ярче середины", "Рано.", "early"),
+      ], rule: "check" },
+      { id: "exc", name: "Экскреторная", when: "5–10 минут", fields: [
+        chk("pelvis", "В лоханках нет контраста", "Рано.", "early"),
+      ], rule: "check" },
+    ] },
+    { id: "chest", name: "Грудная клетка", phases: [
+      { id: "plain", name: "Без контраста", fields: CHEST, rule: "check" },
+      { id: "cont",  name: "С контрастом", when: "60–70 с", fields: CHEST.concat([
+        chk("vein", "Полосы от вен", "Рано.", "early"),
+      ]), rule: "check" },
+    ] },
+  ];
+  const GOOD = 250, OK = 200, PE_OK = 210, AV_GAP = 50, ABD_GOOD = 280, LIVER_GOOD = 110, LIVER_OK = 92, MAX_HU = 1000;
+
+  el.innerHTML =
+    '<div class="w-label">Что разбираем</div>' +
+    '<div class="picks w-zone">' +
+      ZONES.map(z => '<button type="button" class="pick" data-z="' + z.id + '" aria-pressed="false">' + z.name + "</button>").join("") +
+    "</div>" +
+    '<div class="w-qphase"></div>' +
+    '<div class="w-qfields"></div>' +
+    '<div class="w-out" aria-live="polite"></div>' +
+    '<div class="w-a-more w-qmore"></div>' +
+    '<div class="w-rule">Кружок — на полпросвета, не на стенке, не на кальцинате.</div>';
+
+  const phaseBox = el.querySelector(".w-qphase"), box = el.querySelector(".w-qfields"),
+        out = el.querySelector(".w-out"), more = el.querySelector(".w-qmore");
+  let zone = null, step = null; // step — зона без фаз или выбранная фаза
+  const num = i => { const r = i.value.trim().replace(",", ".").replace(/[−–]/, "-"); if (!r) return null; return /^-?\d+(\.\d+)?$/.test(r) ? +r : NaN; };
+  const verdict = (cls, big, hint) => { out.className = "w-out q-" + cls; out.innerHTML = '<span class="w-num">' + big + "</span>" + (hint ? '<span class="w-hint">' + hint + "</span>" : ""); };
+  const lines = arr => { more.innerHTML = arr.map(t => '<div class="w-line">' + t + "</div>").join(""); };
+  const press = (sel, attr, id) => el.querySelectorAll(sel).forEach(x => x.setAttribute("aria-pressed", x.dataset[attr] === id));
+
+  function pickZone(id) {
+    zone = ZONES.find(z => z.id === id); step = null;
+    press(".w-zone .pick", "z", id);
+    box.innerHTML = "";
+    if (zone.phases) {
+      phaseBox.innerHTML = '<div class="w-label">Фаза</div><div class="picks w-ph">' +
+        zone.phases.map(p => '<button type="button" class="pick" data-p="' + p.id + '" aria-pressed="false">' + p.name + "</button>").join("") + "</div>";
+      phaseBox.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => pickStep(zone.phases.find(p => p.id === b.dataset.p))));
+      if (zone.phases.length === 1) return pickStep(zone.phases[0]);
+      return show();
+    }
+    phaseBox.innerHTML = "";
+    pickStep(zone);
+  }
+
+  function pickStep(s) {
+    step = s;
+    if (zone.phases) press(".w-ph .pick", "p", s.id);
+    box.innerHTML = s.fields.map(f => f.check
+      ? '<label class="w-chk"><input type="checkbox" data-k="' + f.k + '"> ' + f.label + "</label>"
+      : '<div class="w-field"><label class="w-label" for="q-' + f.k + '">' + f.label + "</label>" +
+        '<input id="q-' + f.k + '" data-k="' + f.k + '" class="w-input" type="text" inputmode="decimal" autocomplete="off" placeholder="HU"></div>').join("");
+    if (s.rule === "check") box.insertAdjacentHTML("afterbegin", '<div class="w-label">Отметьте, что видите</div>');
+    box.querySelectorAll("input").forEach(i => i.addEventListener(i.type === "checkbox" ? "change" : "input", show));
+    show();
+  }
+
+  /* Работа над ошибками: что проверить по порядку, от частого к редкому */
+  const ROI = "«Куда ставить ROI»", CATH = "«Частые вопросы о катетерах»", VOL = "«Расчёт объёма контраста»";
+  const MON = "Где стоял кружок? Нужно в аорте (ТЭЛА — в лёгочном стволе), не в вене, не на кальцинате. → " + ROI;
+  const DOC = "Всё было правильно? Покажите врачу — это может быть не ваша ошибка.";
+  const PLANS = {
+    pale: () => [
+      MON,
+      "Катетер синий или в кисти? Нужен зелёный или розовый, в локте. → " + CATH,
+      "Объём совпал с калькулятором? → " + VOL,
+      "Инжектор останавливался по давлению?",
+      "Был отёк в месте укола?",
+    ],
+    late: () => [
+      MON,
+      "Запускали вручную? Жмите сразу, как пришёл контраст.",
+      "Была пауза перед сканом?",
+    ],
+    early: w => [
+      "Скан — через " + w + ".",
+      "Время считать от начала введения, не от конца.",
+    ],
+    streak: () => [
+      "Рука правая?",
+      "Был физраствор 50 мл?",
+      MON,
+    ],
+    overtook: () => [
+      "Сразу скажите врачу: нужен ещё скан голеней.",
+      "Это не ваша ошибка.",
+    ],
+  };
+  let plan = [];
+  const todo = (key, arg) => { if (!plan.some(p => p[0] === key)) plan.push([key, arg]); };
+
+  function artery(v, what) {
+    if (v >= GOOD) return verdict("good", "Отлично", what + " " + v + " HU");
+    if (v >= OK)   return verdict("ok", "Годится", what + " " + v + " HU — на грани");
+    todo("pale");
+    return verdict("bad", "Слабо", what + " " + v + " HU — мало");
+  }
+
+  function show() {
+    plan = [];
+    evaluate();
+    if (!plan.length) return;
+    const steps = [];
+    plan.flatMap(([k, a]) => PLANS[k](a)).forEach(t => {
+      if (t.startsWith(MON)) { if (steps.some(x => x.startsWith(MON))) return; }
+      if (!steps.includes(t)) steps.push(t);
+    });
+    if (plan.some(([k]) => k !== "overtook")) steps.push(DOC);
+    more.insertAdjacentHTML("beforeend",
+      '<div class="w-steps"><div class="w-label">Что проверить</div><ol>' +
+      steps.map(t => "<li>" + t + "</li>").join("") + "</ol></div>");
+  }
+
+  function evaluate() {
+    more.innerHTML = "";
+    if (!zone) return verdict("none", "—", "выберите, что разбираем");
+    if (!step) return verdict("none", "—", "выберите фазу");
+
+    if (step.rule === "check") {
+      const bad = step.fields.filter(f => box.querySelector('[data-k="' + f.k + '"]').checked);
+      if (!bad.length) return verdict("good", "Хорошо", "");
+      verdict("bad", "Плохо", "");
+      bad.forEach(f => f.plan && todo(f.plan, step.when));
+      return lines(bad.map(f => "<b>" + f.label + ".</b> " + f.fix));
+    }
+
+    const v = {}, c = {};
+    box.querySelectorAll('input[type="checkbox"]').forEach(i => { c[i.dataset.k] = i.checked; });
+    for (const i of box.querySelectorAll('input[type="text"]')) {
+      v[i.dataset.k] = num(i);
+      if (Number.isNaN(v[i.dataset.k])) return verdict("bad", "?", "Нужно число, например 280");
+    }
+    if (step.fields.some(f => !f.opt && !f.check && v[f.k] === null)) return verdict("none", "—", "введите HU");
+    if (Object.values(v).some(x => x !== null && x > MAX_HU)) return verdict("bad", "?", "Больше 1000 HU — опечатка или кальцинат");
+
+    switch (step.rule) {
+      case "artery": return artery(v.a, "Артерия");
+
+      case "bca": {
+        const late = v.b !== null && v.a - v.b <= AV_GAP;
+        if (late && v.a >= OK) verdict("ok", "Поздно", "Яремная почти как сонная");
+        else artery(v.a, "Сонная артерия");
+        const t = [];
+        if (late) { t.push("<b>Запуск поздно.</b>"); todo("late"); }
+        if (c.streak) {
+          t.push("<b>Полосы от вен.</b>");
+          todo("streak");
+          if (out.classList.contains("q-good")) verdict("ok", "Полосы", "Полосы закрывают дугу");
+        }
+        return lines(t);
+      }
+
+      case "pe":
+        if (v.a >= GOOD) verdict("good", "Отлично", "Лёгочный ствол " + v.a + " HU");
+        else if (v.a >= PE_OK) verdict("ok", "Годится", "Лёгочный ствол " + v.a + " HU — на грани");
+        else { verdict("bad", "Слабо", "Лёгочный ствол " + v.a + " HU — мало"); todo("pale"); }
+        if (v.b !== null && v.b > v.a) { lines(["<b>Аорта ярче ствола — запуск поздно.</b>"]); todo("late"); }
+        return;
+
+      case "legs":
+        if (v.a < OK) { todo("pale"); return verdict("bad", "Слабо", "Аорта " + v.a + " HU — мало"); }
+        if (c.shin) {
+          todo("overtook");
+          verdict("bad", "Обогнали болюс", "Голени пустые");
+          return;
+        }
+        return v.a >= GOOD ? verdict("good", "Отлично", "Аорта " + v.a + " HU")
+                           : verdict("ok", "Годится", "Аорта " + v.a + " HU — на грани");
+
+      case "abdArt":
+        if (v.a >= ABD_GOOD) return verdict("good", "Отлично", "Аорта " + v.a + " HU");
+        if (v.a >= OK) return verdict("ok", "Годится", "Аорта " + v.a + " HU — на грани");
+        todo("pale");
+        return verdict("bad", "Слабо", "Аорта " + v.a + " HU — мало");
+
+      case "abdVen": {
+        const tips = [];
+        if (v.a < LIVER_OK) tips.push("Печень жирная (тёмная и без контраста)? Тогда это не ошибка.");
+        if (c.spleen) todo("early", step.when);
+        else if (v.a < LIVER_OK) todo("pale");
+        if (c.spleen) verdict("bad", "Рано", "Ещё артериальная фаза");
+        else if (v.a >= LIVER_GOOD) verdict("good", "Отлично", "Печень " + v.a + " HU");
+        else if (v.a >= LIVER_OK) verdict("ok", "Годится", "Печень " + v.a + " HU — на грани");
+        else verdict("bad", "Слабо", "Печень " + v.a + " HU — мало");
+        return lines(tips);
+      }
+
+    }
+  }
+
+  el.querySelectorAll(".w-zone .pick").forEach(b => b.addEventListener("click", () => pickZone(b.dataset.z)));
+  show();
+};
