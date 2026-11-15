@@ -18,6 +18,8 @@ rhizarthrosis.md
 hand-arthritis.md
 birads.md
 birads-lexicon.md
+sos-anaphylaxis.md
+sos-extravasation.md
 contrast-questions.md
 catheter-faq.md
 contrast-volume.md
