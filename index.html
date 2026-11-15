@@ -290,6 +290,20 @@
   .news-all a { color: var(--accent); }
   .news-all .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); }
 
+  /* Примеры под строкой поиска — только на главной врача. Список — в examples.txt */
+  .examples { display: none; }
+  body.home .examples:not([hidden]) { display: block; max-width: 620px; margin: 12px auto 0; padding: 0 16px;
+    text-align: center; color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+  .examples .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); white-space: nowrap; }
+
+  /* Кот-«домой» слева от поиска: виден везде, кроме главной */
+  .home-btn { flex: none; width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); cursor: pointer; overflow: hidden; }
+  .home-btn img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  /* кот «вжух» на картинке мелкий и слева — увеличиваем морду */
+  .home-btn img[src$="vzhuh.jpg"] { width: auto; height: 190%; max-width: none; margin: -14px 0 0 -2px; }
+  body.home .home-btn { display: none; }
+
   /* Кот — только на пустой главной, после ввода запроса прячется */
   .cat { display: none; }
   body.home .cat { display: block; width: min(240px, 60vw); margin: 0 auto 12px; border-radius: 12px; mix-blend-mode: multiply; }
@@ -311,8 +325,10 @@ window.RH_LAB = /(^|[?&])lab(=|&|$)/i.test(location.search.slice(1));
   <img class="cat" src="img/vzhuh.jpg" alt="Кот-волшебник: вжух" width="240">
   <script>if (window.RH_LAB) { const c = document.querySelector("img.cat"); c.src = "img/doctor-cat.jpg"; c.alt = "Кот в медицинском халате"; }</script>
   <div class="wrap bar">
+    <button type="button" class="home-btn" id="homeBtn" aria-label="На главную" title="На главную"><img src="img/vzhuh.jpg" alt=""></button>
     <input id="q" type="search" placeholder="Что описываем?" autofocus autocomplete="off" enterkeyhint="search" aria-label="Поиск">
   </div>
+  <div class="examples" id="examples" hidden></div>
   <div class="news" id="news" hidden></div>
   <nav class="lablinks" id="labLinks" aria-label="Разделы" hidden></nav>
 </header>
@@ -338,6 +354,7 @@ window.RH_LAB = /(^|[?&])lab(=|&|$)/i.test(location.search.slice(1));
 if (window.RH_LAB) {
   document.title = "Помощник лаборанта";
   document.getElementById("q").placeholder = "Что делаем?";
+  document.querySelector("#homeBtn img").src = "img/doctor-cat.jpg";
   document.querySelector("footer p").textContent = "Справочный материал для рентгенолаборантов, не клиническая рекомендация. Решения о введении контраста принимает врач.";
 }
 </script>
@@ -1200,6 +1217,43 @@ if (window.RH_LAB) {
     });
     dlg.querySelector(".news-arch-x").addEventListener("click", () => { close(); dlg.removeAttribute("open"); });
     dlg.addEventListener("click", e => { if (e.target === dlg) close(); });   // клик мимо окна
+  }).catch(() => {});
+})();
+</script>
+
+<script>
+/* Примеры на главной и возврат домой.
+   Примеры: examples.txt — по одному на строке, при каждом открытии 3 случайных; клик подставляет текст в поиск.
+   Домой: кот слева от поиска или Esc в строке поиска — очищает запрос и возвращает на пустую главную.
+   Esc работает только в строке поиска: в полях шаблона он стёр бы всё, что врач уже набрал. */
+(function () {
+  const q = document.getElementById("q");
+  const ex = document.getElementById("examples");
+  const fine = window.matchMedia && matchMedia("(pointer: fine)").matches;   // мышь, а не палец: ставить курсор в поиск
+
+  function home() {
+    q.value = "";
+    q.dispatchEvent(new Event("input"));
+    document.body.classList.add("home");
+    history.replaceState(null, "", location.pathname + location.search);  // убрать #раздел, ?lab оставить
+    window.scrollTo(0, 0);
+    if (fine) q.focus();
+  }
+  document.getElementById("homeBtn").addEventListener("click", home);
+  q.addEventListener("keydown", e => { if (e.key === "Escape" && q.value) { e.preventDefault(); home(); } });
+
+  if (window.RH_LAB || !ex || location.protocol === "file:") return;          // у лаборанта на главной кнопки разделов
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  fetch("examples.txt", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
+    const all = t.replace(/\r/g, "").split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("#"));
+    if (!all.length) return;
+    for (let i = all.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [all[i], all[j]] = [all[j], all[i]]; }
+    ex.innerHTML = "Шаблоны заключений и подсказки для рентгенолога. Например: " +
+      all.slice(0, 3).map(x => '<span class="try" role="button" tabindex="0" data-q="' + esc(x) + '">' + esc(x) + "</span>").join(" · ");
+    ex.hidden = false;
+    const go = el => { q.value = el.dataset.q; q.dispatchEvent(new Event("input")); if (fine) q.focus(); };
+    ex.addEventListener("click", e => { const el = e.target.closest(".try"); if (el) go(el); });
+    ex.addEventListener("keydown", e => { const el = e.target.closest(".try"); if (el && e.key === "Enter") go(el); });
   }).catch(() => {});
 })();
 </script>
