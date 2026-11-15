@@ -242,7 +242,7 @@
   footer a { color: inherit; }
 
   /* Стартовая страница: только строка поиска */
-  body.home header.top { position: static; border-bottom: 0; padding-top: 30vh; }
+  body.home header.top { position: static; border-bottom: 0; padding-top: clamp(46px, 6vh, 72px); }
   body.home .bar { max-width: 620px; }
   body.home #q { height: 54px; padding: 0 18px; font-size: 18px; border-radius: 14px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, .06); }
@@ -257,8 +257,6 @@
   .news ul { margin: 0; padding-left: 1.1em; }
   .news li { margin: 3px 0; }
   .news ul + h2 { margin-top: 14px; }
-  /* на невысоких экранах поднять всё выше, чтобы «Что нового» не залезало под подвал */
-  @media (max-height: 900px) { body.home header.top { padding-top: 12vh; } }
   .news .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); }
 
   /* Главная лаборанта: кнопки разделов под строкой поиска (на главной врача их нет) */
@@ -270,7 +268,12 @@
   .lablinks button:hover { border-color: var(--accent); }
   /* Экстренное: красные кнопки сверху на главной лаборанта, плавающая кнопка SOS на остальных страницах */
   .soslinks { display: none; }
-  body.home.lab header.top { padding-top: 12px; }
+  body.home.lab header.top { padding-top: 46px; }   /* место под ссылку «Помощник рентгенолога» в углу */
+  /* Ссылка на другой вход: левый верхний угол главной, мелко и серо */
+  .side-link { display: none; }
+  body.home .side-link { display: block; position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); left: 14px;
+    color: var(--muted); font-size: 0.85rem; text-decoration: none; border-bottom: 1px dashed var(--line); }
+  body.home .side-link:hover { color: var(--accent); border-color: var(--accent); }
   body.home .soslinks:not([hidden]) { display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
     max-width: 620px; margin: 0 auto 18px; padding: 0 12px; }
   .soslinks button { min-height: 76px; padding: 10px 12px; border: 0; border-radius: 14px; background: #c0261b;
@@ -364,6 +367,8 @@ if (window.RH_LAB) document.body.classList.add("lab");
 </script>
 
 <header class="top">
+  <!-- Переход между входами (только на главной, левый верхний угол): у врача — на лаборанта, у лаборанта — на врача -->
+  <a class="side-link" id="sideLink" href="./?lab">Помощник лаборанта →</a>
   <!-- Экстренное (разделы со строкой «Срочно:»): у лаборанта — красными кнопками в самом верху главной -->
   <nav class="soslinks" id="sosLinks" aria-label="Экстренные ситуации" hidden></nav>
   <img class="cat" src="img/vzhuh.jpg" alt="Кот-волшебник: вжух" width="240">
@@ -400,6 +405,8 @@ if (window.RH_LAB) {
   document.getElementById("q").placeholder = "Что делаем?";
   document.querySelector("#homeBtn img").src = "img/doctor-cat.jpg";
   document.querySelector("footer p").textContent = "Справочный материал для рентгенолаборантов, не клиническая рекомендация. Решения о введении контраста принимает врач.";
+  const side = document.getElementById("sideLink");
+  side.href = "./"; side.textContent = "Помощник рентгенолога →";
 }
 </script>
 <div class="toast" id="toast" hidden></div>
