@@ -172,6 +172,8 @@
     min-width: 3ch; max-width: 100%; box-sizing: content-box; }
   .fld:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   .fld::placeholder { color: var(--muted); }
+  /* Незаполненное при попытке скопировать */
+  .fld.miss, .calc.miss { outline: 2px solid var(--err); outline-offset: 1px; background: var(--warn-bg); }
   /* Калькулятор {{NASCET}}: считает сам */
   .calc { font-weight: 700; color: var(--accent); }
   .calc.bad { color: var(--err); }
@@ -632,7 +634,25 @@ if (window.RH_LAB) {
         const tpl = v.kind === "tool" ? null : buildTemplate(v.text, studyEl.querySelector(".tpl"));
         studyEl.querySelectorAll(".pick").forEach(b => b.onclick = () => render(found, found[+b.dataset.i], 0));
         studyEl.querySelectorAll(".tab").forEach(b => b.onclick = () => render(found, s, +b.dataset.v));
-        if (tpl) studyEl.querySelector(".copy").onclick = () => copy(tpl.text());
+        if (tpl) {
+          let armed = 0;                                          // время первого нажатия при незаполненных полях
+          const btn = studyEl.querySelector(".copy");
+          btn.onclick = () => {
+            const miss = tpl.missing();
+            studyEl.querySelectorAll(".miss").forEach(e => e.classList.remove("miss"));
+            if (!miss.length || Date.now() - armed < 8000) { armed = 0; btn.textContent = "Скопировать"; copy(tpl.text()); return; }
+            armed = Date.now();
+            const names = [...new Set(miss.map(m => m.label))];
+            miss.forEach(m => m.el.classList.add("miss"));
+            const first = miss.find(m => m.el.tagName === "INPUT");
+            if (first) { first.el.focus({ preventScroll: true }); first.el.scrollIntoView({ block: "center", behavior: "smooth" }); }
+            btn.textContent = "Всё равно скопировать";
+            toast("Не заполнено: " + names.slice(0, 4).join(", ") + (names.length > 4 ? " и ещё " + (names.length - 4) : ""), 4000);
+            setTimeout(() => { if (armed && Date.now() - armed >= 8000) { armed = 0; btn.textContent = "Скопировать"; } }, 8100);
+          };
+          // начал заполнять — подсветка с этого поля уходит
+          studyEl.querySelector(".tpl").addEventListener("input", e => e.target.classList.remove("miss"));
+        }
         studyEl.querySelector(".reset").onclick = () => render(found, s, vi);
         const box = studyEl.querySelector(".hints");
         if (box) Promise.all(v.hints.map(hint)).then(texts => {
@@ -876,6 +896,7 @@ if (window.RH_LAB) {
   function buildTemplate(text, el) {
     el.innerHTML = "";
     const parts = [], calcs = [], named = {}, toggles = {}, lists = [];
+    let missing = [];                           // незаполненное в копируемом тексте: [{ label, el }] — собирается при каждом text()
     const EMPTY = "\u0000";                     // пустой вариант: строка, где только он, при копировании исчезает
     // {{калькулятор}} | {переключатель} — внутри него можно {{калькулятор}} и ещё один {переключатель} (одна вложенность) | [поле]
     const CALC_RE = String.raw`\{\{[^{}\n]*\}\}`;
@@ -932,7 +953,17 @@ if (window.RH_LAB) {
     const USED = new Set(Object.values(CALC).flatMap(d => (d.uses || []).map(n => "#" + lower(n))));
     function sizeField(f) { f.style.width = Math.max(3, (f.value || f.placeholder).length + 1) + "ch"; }
 
-    function field(inner, target, out) {                          // [поле]
+    // подпись пустого поля [__] для «Не заполнено: …»: до 3 слов перед ним в пределах фразы
+    // («Атрофия по шкале GCA [__]» → «по шкале GCA»); у именованных полей и калькуляторов подпись — имя
+    function labelOf(before) {
+      const clause = before.replace(/\{\{[^{}]*\}\}/g, " ").replace(/\[[^\[\]]*\]/g, " ").replace(/[{}|#]/g, " ")
+        .split(/[.;:,(=]/).pop();
+      const w = clause.split(/\s+/).filter(x => /[A-Za-zА-Яа-яЁё0-9]/.test(x));
+      while (w.length && w[w.length - 1].length <= 2) w.pop();            // «…позвонка на» → «…позвонка»
+      return w.slice(-3).join(" ") || "поле";
+    }
+
+    function field(inner, target, out, before) {                  // [поле]
       inner = inner.trim();
       const f = document.createElement("input");
       f.className = "fld"; f.type = "text"; f.autocomplete = "off";
@@ -950,7 +981,12 @@ if (window.RH_LAB) {
       }
       f.addEventListener("input", () => sizeField(f));
       sizeField(f);
-      out.push(() => f.value.trim() || "[__]");
+      const label = INPUT_NAMES.has(inner) ? inner : labelOf(before || "");
+      out.push(() => {
+        if (f.value.trim()) return f.value.trim();
+        missing.push({ label, el: f });
+        return "[__]";
+      });
       target.append(f);
     }
 
@@ -1034,13 +1070,20 @@ if (window.RH_LAB) {
             out.push(() => raw);
           } else {
             const c = { name: key, el: span, value: "" };
-            calcs.push(c); out.push(() => c.value || "[__]");
+            calcs.push(c);
+            out.push(() => {
+              if (c.value) return c.value;
+              // подсветить пустое поле, из которого считается (оно может быть и в жёлтой строке «> …»)
+              const n = CALC[key].inputs.find(n => named[n] && named[n].some(i => !i.value.trim()));
+              missing.push(n ? { label: n, el: named[n].find(i => !i.value.trim()) } : { label: key, el: span });
+              return "[__]";
+            });
           }
           target.append(span);
         } else if (tg !== undefined && depth < 2) {
           toggle(tg, target, out, depth);
         } else if (fld !== undefined) {
-          field(fld, target, out);
+          field(fld, target, out, str.slice(0, start));
         } else {                                                  // скобки, которые здесь не работают, — как текст
           target.append(raw); out.push(() => raw);
         }
@@ -1062,6 +1105,12 @@ if (window.RH_LAB) {
     recalc();
     lists.forEach(f => f());
     return {
+      // что осталось незаполненным в том тексте, который уйдёт при копировании (скрытые варианты {а|б} не считаются)
+      missing: () => {
+        missing = []; parts.forEach(p => p());
+        const seen = new Set(), m = missing.filter(x => !seen.has(x.el) && seen.add(x.el));   // поле и его калькулятор — один раз
+        missing = []; return m;
+      },
       text: () => parts.map(p => p()).join("")
         .split("\n").filter(l => !(l.includes(EMPTY) && !l.replace(/\u0000/g, "").trim())).join("\n")
         .replace(/\u0000/g, "")
@@ -1074,9 +1123,9 @@ if (window.RH_LAB) {
   }
 
   let toastTimer;
-  function toast(m) {
+  function toast(m, ms) {
     toastEl.textContent = m; toastEl.hidden = false;
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastEl.hidden = true; }, 1800);
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastEl.hidden = true; }, ms || 1800);
   }
   function copy(text) {
     const fallback = () => {
