@@ -6,7 +6,10 @@ window.RH_WIDGETS = window.RH_WIDGETS || {};
 /* Объём контраста для лаборанта.
    Не ангиография: 300 — вес × 1,6; 320 — × 1,5; 350 — × 1,4; 370 — × 1,3; 400 — × 1,2 (≈ 480 мг йода/кг);
      до целого мл; не больше 150 мл.
-   Ангиография: зоны и их правила — в таблице ZONES ниже. Физраствор всегда 50 мл с той же скоростью. */
+   Ангиография: зоны и их правила — в таблице ZONES ниже. Физраствор всегда 50 мл с той же скоростью.
+     Объёмы в ZONES — для концентрации REF (350). Другая концентрация — объём × REF / концентрация
+     (та же доза йода). Ниже минимума зоны (minC) — предупреждение: скорость упирается в потолок, йода в секунду меньше.
+   Концентрация выбирается один раз над вкладками и действует на обе. */
 RH_WIDGETS["contrast-volume"] = function (el) {
   const MAX = 150;                                   // мл, потолок для любого веса
   const K = { 300: 1.6, 320: 1.5, 350: 1.4, 370: 1.3, 400: 1.2 };  // ≈ 480 мг йода на кг для любой концентрации
@@ -16,13 +19,14 @@ RH_WIDGETS["contrast-volume"] = function (el) {
      ml / flow — функции от {kg, cm}; need — какие поля нужны: "kg", "cm", "kg|cm" (хотя бы одно), "" (ничего). */
   const SALINE = 50;      // мл физраствора после контраста
   const FLOW_MAX = 4.5;   // мл/с, больше вены пожилых не держат
+  const REF = 350;        // мг йода/мл — для этой концентрации записаны объёмы в ZONES
   const ZONES = [
     { id: "bca",   name: "БЦА",  need: "kg",
       ml: p => lin(p.kg, 60, 100, 50, 70),                 // 60 кг → 50 мл, 100 кг → 70 мл
-      flow: () => FLOW_MAX,
-      conc: "Концентрация 320–370." },
+      flow: () => FLOW_MAX, minC: 320 },
     { id: "pe",    name: "ТЭЛА", need: "",
       ml: () => 50, mlText: "1 флакон 50 мл", mlHint: "в шприце 47–48 мл — это нормально",
+      fixed: true,                                         // флакон 50 мл при 350 и выше — не пересчитываем
       flow: () => FLOW_MAX },
     { id: "aorta-part", name: "Грудная или брюшная аорта", need: "kg",
       ml: p => lin(p.kg, 60, 100, 80, 100),                // 60 кг → 80 мл, 100 кг → 100 мл
@@ -58,16 +62,16 @@ RH_WIDGETS["contrast-volume"] = function (el) {
     "</div>";
 
   el.innerHTML =
+    '<div class="w-label">Концентрация контраста, мг йода/мл</div>' +
+    '<div class="picks w-conc">' +
+      Object.keys(K).map(c => '<button type="button" class="pick" data-c="' + c + '" aria-pressed="false">' + c + "</button>").join("") +
+    "</div>" +
     '<div class="tabs w-mode" role="tablist">' +
       '<button type="button" class="tab" role="tab" data-mode="plain" aria-selected="true">Не ангиография</button>' +
       '<button type="button" class="tab" role="tab" data-mode="angio" aria-selected="false">Ангиография</button>' +
     "</div>" +
     // --- не ангиография ---
     '<div class="w-pane" data-pane="plain">' +
-      '<div class="w-label">Концентрация контраста, мг йода/мл</div>' +
-      '<div class="picks w-conc">' +
-        Object.keys(K).map(c => '<button type="button" class="pick" data-c="' + c + '" aria-pressed="false">' + c + "</button>").join("") +
-      "</div>" +
       field("w-weight", "Вес пациента, кг", "например, 70") +
       '<div class="w-out" aria-live="polite"></div>' +
       '<div class="w-rule">Вес × коэффициент: 300 → 1,6 · 320 → 1,5 · 350 → 1,4 · 370 → 1,3 · 400 → 1,2. Не больше ' + MAX + " мл</div>" +
@@ -122,6 +126,7 @@ RH_WIDGETS["contrast-volume"] = function (el) {
     $(".w-field-note").hidden = !either;
     outA.classList.remove("bad");
     moreA.innerHTML = "";
+    if (!conc) return empty(outA, "выберите концентрацию");
     if (!z) return empty(outA, "выберите, что исследуем");
 
     const kg = needKg ? num(wA) : null, cm = needCm ? num(hA) : null;
@@ -130,15 +135,23 @@ RH_WIDGETS["contrast-volume"] = function (el) {
     if (either ? (kg === null && cm === null) : (needKg && kg === null)) return empty(outA, either ? "введите рост или вес" : "введите вес");
 
     const p = { kg, cm };
-    const ml = Math.min(MAX, Math.round(z.ml(p)));
+    const c = +conc, minC = z.minC || REF;
+    const keep = z.fixed && c >= REF;                       // ТЭЛА: флакон 50 мл при 350+
+    const raw = keep ? z.ml(p) : z.ml(p) * REF / c;         // та же доза йода, что при 350
+    const ml = Math.min(MAX, Math.round(raw));
+    const capped = Math.round(raw) > MAX;
     const flow = Math.min(FLOW_MAX, z.flow(p));
-    outA.innerHTML = '<span class="w-num">' + (z.mlText || ml + " мл") + "</span>" +
-      (z.mlHint ? '<span class="w-hint">' + z.mlHint + "</span>" : "");
+    outA.innerHTML = '<span class="w-num">' + (keep && z.mlText ? z.mlText : ml + " мл") + "</span>" +
+      (keep && z.mlHint ? '<span class="w-hint">' + z.mlHint + "</span>"
+        : capped ? '<span class="w-hint">максимум</span>' : "");
     moreA.innerHTML =
       '<div class="w-line"><b>Скорость: ' + fmt(flow) + " мл/с</b></div>" +
       '<div class="w-line">Физраствор: ' + SALINE + " мл, " + fmt(flow) + " мл/с</div>" +
+      (c < minC ? '<div class="w-warn">Для «' + z.name + '» нужна концентрация от ' + minC +
+        ". С " + c + " контраст будет слабее даже с пересчитанным объёмом — сообщите врачу до введения.</div>" : "") +
       (z.warn ? '<div class="w-warn">' + z.warn + "</div>" : "") +
-      '<div class="w-rule">' + (z.conc || "Концентрация 350 и выше.") +
+      '<div class="w-rule">Подходит: ' + (z.minC ? z.minC + "–370" : "350 и выше") +
+        (keep ? "." : ". Объём пересчитан на " + c + " (база — " + REF + ").") +
         " Катетер в кисти или вена сомнительная — сообщите врачу до введения.</div>";
   }
 
@@ -152,6 +165,7 @@ RH_WIDGETS["contrast-volume"] = function (el) {
     conc = b.dataset.c;
     el.querySelectorAll(".w-conc .pick").forEach(x => x.setAttribute("aria-pressed", x === b));
     showPlain();
+    showAngio();
   }));
   el.querySelectorAll(".w-zone .pick").forEach(b => b.addEventListener("click", () => {
     zone = b.dataset.z;
