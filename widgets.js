@@ -179,34 +179,56 @@ RH_WIDGETS["contrast-volume"] = function (el) {
   showAngio();
 };
 
-/* Эффективная доза КТ по DLP — МУ 2.6.1.3584-19 (изменения в МУ 2.6.1.2944-11), таблица 6.1, взрослые.
-   E = Σ DLPᵢ × kᵢ (формула 6.7): каждое сканирование — своя строка со своей областью.
+/* Доза КТ по DLP — МУ 2.6.1.3584-19 (изменения в МУ 2.6.1.2944-11), таблица 6.1, взрослые.
+   E = Σ DLPᵢ × kᵢ (формула 6.7): каждое сканирование — своя строка.
+   Лаборант выбирает не анатомическую область, а исследование (STUDIES) — сайт сам берёт область из таблицы МУ (REGIONS).
+   Позвоночника в таблице МУ нет — отдел позвоночника считается по области, которую покрывает скан:
+   шейный — шея, грудной — грудная клетка, поясничный — брюшная полость, грудной + поясничный — грудь + живот.
    Фантом (Head 16 / Body 32) указан в протоколе дозы аппарата и должен совпадать с подписью области. */
 RH_WIDGETS["dose-dlp"] = function (el) {
-  const REGIONS = [
-    { id: "head",      name: "Голова",                     ph: "Head 16", k: 0.0014, t: "0,0014" },
-    { id: "neck",      name: "Шея, в т. ч. КТА БЦА",       ph: "Head 16", k: 0.0060, t: "0,0060" },
-    { id: "headneck",  name: "Голова + шея",               ph: "Head 16", k: 0.0025, t: "0,0025" },
-    { id: "chest",     name: "Грудная клетка",             ph: "Body 32", k: 0.012, t: "0,012" },
-    { id: "abd",       name: "Брюшная полость",            ph: "Body 32", k: 0.014, t: "0,014" },
-    { id: "pelvis",    name: "Таз",                        ph: "Body 32", k: 0.015, t: "0,015" },
-    { id: "ch-abd",    name: "Грудь + живот",              ph: "Body 32", k: 0.013, t: "0,013" },
-    { id: "abd-pel",   name: "Живот + таз",                ph: "Body 32", k: 0.015, t: "0,015" },
-    { id: "ch-abd-pel",name: "Грудь + живот + таз",        ph: "Body 32", k: 0.014, t: "0,014" },
-    { id: "legs",      name: "Нижние конечности",          ph: "Body 32", k: 0.00020, t: "0,00020" },
-    { id: "whole",     name: "Всё тело",                   ph: "Body 32", k: 0.017, t: "0,017" },
+  const REGIONS = {                                    // таблица 6.1 МУ: область → коэффициент, мЗв/(мГр·см)
+    head:       { name: "голова",                  ph: "Head 16", k: 0.0014,  t: "0,0014" },
+    neck:       { name: "шея",                     ph: "Head 16", k: 0.0060,  t: "0,0060" },
+    headneck:   { name: "голова + шея",            ph: "Head 16", k: 0.0025,  t: "0,0025" },
+    chest:      { name: "грудная клетка",          ph: "Body 32", k: 0.012,   t: "0,012" },
+    abd:        { name: "брюшная полость",         ph: "Body 32", k: 0.014,   t: "0,014" },
+    pelvis:     { name: "таз",                     ph: "Body 32", k: 0.015,   t: "0,015" },
+    chabd:      { name: "грудь + живот",           ph: "Body 32", k: 0.013,   t: "0,013" },
+    abdpel:     { name: "живот + таз",             ph: "Body 32", k: 0.015,   t: "0,015" },
+    chabdpel:   { name: "грудь + живот + таз",     ph: "Body 32", k: 0.014,   t: "0,014" },
+    // нижние конечности (0,00020) убраны: КТА ног сканируют от аорты, а коэффициент — только для ног
+    whole:      { name: "всё тело",                ph: "Body 32", k: 0.017,   t: "0,017" },
+  };
+  const STUDIES = [                                    // [группа, [исследование, область]]
+    ["Голова и шея", [
+      ["Головной мозг", "head"], ["КТ-перфузия головного мозга", "head"], ["Пазухи носа", "head"],
+      ["Височные кости", "head"], ["Шея", "neck"], ["КТА БЦА", "neck"], ["Голова + шея одним сканом", "headneck"]]],
+    ["Позвоночник", [
+      ["Шейный отдел", "neck"], ["Грудной отдел", "chest"], ["Поясничный отдел", "abd"],
+      ["Грудной + поясничный", "chabd"]]],
+    ["Грудь", [
+      ["ОГК (лёгкие)", "chest"], ["КТА ТЭЛА", "chest"], ["КТА грудной аорты", "chest"]]],
+    ["Живот и таз", [
+      ["Брюшная полость", "abd"], ["Почки, в т. ч. нативно", "abd"], ["Почки + мочевой пузырь, писография", "abdpel"],
+      ["КТА брюшной аорты", "abd"], ["Таз", "pelvis"], ["Живот + таз", "abdpel"]]],
+    ["Несколько областей одним сканом", [
+      ["Грудь + живот", "chabd"], ["Грудь + живот + таз", "chabdpel"], ["Вся аорта (грудная + брюшная)", "chabdpel"],
+      ["Всё тело", "whole"]]],
   ];
+  const ALL = STUDIES.flatMap(([g, list]) => list.map(([name, r]) => ({ id: g + "|" + name, name, r: REGIONS[r] })));
   const SRC = "https://legalacts.ru/doc/mu-2613584-19-261-ioniziruiushchee-izluchenie-radiatsionnaja-bezopasnost-izmenenija-v/";
   const dec = (n, d) => n.toFixed(d).replace(".", ",");
-  
+  const esc = s => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+
   el.innerHTML =
-    '<div class="w-label">Каждое сканирование из протокола дозы — отдельной строкой: область и её DLP</div>' +
+    '<div class="w-label">Каждое сканирование из протокола дозы — отдельной строкой: исследование и его DLP</div>' +
     '<div class="w-rows"></div>' +
-    '<button type="button" class="pick w-add">+ ещё область</button>' +
+    '<button type="button" class="pick w-add">+ ещё сканирование</button>' +
     '<div class="w-out" aria-live="polite"></div>' +
     '<div class="w-a-more w-sum"></div>' +
     '<div class="w-rule">Фантом в скобках должен совпадать с протоколом дозы на аппарате (Head 16 / Body 32). ' +
-      'Не совпадает — эта таблица не подходит, сообщите врачу.<br>' +
+      'Не совпадает — эта таблица не подходит, сообщите врачу. ' +
+      'Позвоночника в таблице МУ нет — отдел считается по области, которую захватывает скан.<br>' +
       'Источник: <a href="' + SRC + '" target="_blank" rel="noopener">МУ 2.6.1.3584-19 (изменения в МУ 2.6.1.2944-11), таблица 6.1, взрослые</a>.</div>';
 
   const rows = el.querySelector(".w-rows"), out = el.querySelector(".w-out"), sum = el.querySelector(".w-sum");
@@ -217,9 +239,11 @@ RH_WIDGETS["dose-dlp"] = function (el) {
     const r = document.createElement("div");
     r.className = "w-row";
     r.innerHTML =
-      '<select class="w-input w-sel" aria-label="Область">' +
-        '<option value="">Область…</option>' +
-        REGIONS.map(x => '<option value="' + x.id + '">' + x.name + " (" + x.ph + ")</option>").join("") +
+      '<select class="w-input w-sel" aria-label="Исследование">' +
+        '<option value="">Что сканировали…</option>' +
+        STUDIES.map(([g, list]) => '<optgroup label="' + esc(g) + '">' +
+          list.map(([name, r]) => '<option value="' + esc(g + "|" + name) + '">' + esc(name) + " (" + REGIONS[r].ph + ")</option>").join("") +
+          "</optgroup>").join("") +
       "</select>" +
       '<input id="' + id + '" class="w-input w-dlp" type="text" inputmode="decimal" autocomplete="off" placeholder="DLP" aria-label="DLP, мГр·см">' +
       '<span class="w-unit">мГр·см</span>' +
@@ -238,18 +262,18 @@ RH_WIDGETS["dose-dlp"] = function (el) {
     sum.innerHTML = "";
     let total = 0, used = [], err = "";
     list.forEach(r => {
-      const reg = REGIONS.find(x => x.id === r.querySelector(".w-sel").value);
+      const st = ALL.find(x => x.id === r.querySelector(".w-sel").value), reg = st && st.r;
       const raw = r.querySelector(".w-dlp").value.trim().replace(",", ".");
       if (!reg && !raw) return;                                        // пустая строка — пропускаем
-      if (!reg) { err = err || "выберите область"; return; }
+      if (!reg) { err = err || "выберите исследование"; return; }
       if (!raw) { err = err || "введите DLP"; return; }
       if (!/^\d+(\.\d+)?$/.test(raw) || +raw <= 0 || +raw > 20000) { err = "Проверьте DLP: нужно число в мГр·см"; return; }
       const e = +raw * reg.k;
       total += e;
-      used.push(reg.name + ": " + dec(+raw, raw.includes(".") ? 1 : 0) + " × " + reg.t + " = " + dec(e, 2) + " мЗв");
+      used.push(st.name + " → " + reg.name + ": " + dec(+raw, raw.includes(".") ? 1 : 0) + " × " + reg.t + " = " + dec(e, 2) + " мЗв");
     });
     if (err === "Проверьте DLP: нужно число в мГр·см") { out.classList.add("bad"); out.innerHTML = '<span class="w-hint">' + err + "</span>"; return; }
-    if (!used.length || err) { out.innerHTML = '<span class="w-num">—</span><span class="w-hint">' + (err || "выберите область и введите DLP") + "</span>"; return; }
+    if (!used.length || err) { out.innerHTML = '<span class="w-num">—</span><span class="w-hint">' + (err || "выберите исследование и введите DLP") + "</span>"; return; }
     out.innerHTML = '<span class="w-num">' + dec(total, 2) + " мЗв</span>";
     sum.innerHTML = used.map(t => '<div class="w-line w-small">' + t + "</div>").join("");
   }
@@ -263,7 +287,7 @@ RH_WIDGETS["dose-dlp"] = function (el) {
    артерии: > 200 HU диагностично (Horehledova 2018), 250 HU — общепринятый «хороший» уровень (Radiopaedia, КТ-ангиография лёгочных артерий);
    ТЭЛА: лёгочный ствол 210–300 HU по разным работам, 250 — общепринятый; аорта ярче ствола — поздно;
    ноги: аорта > 200 HU (Horehledova 2018); артерии голеней не видны — болюс обогнали;
-   БЦА: сонная − яремная ≤ 50 HU — венозная контаминация, запуск поздно (Kim 2010);
+   БЦА: меряют дугу аорты (крупный сосуд, там же стоит триггер), пороги — как для любой артерии;
    живот, артериальная: аорта 290–360 HU типично (Radiopaedia, late arterial phase), > 280 HU — оптимально; < 200 — слабо;
    живот, венозная: печень > 110 HU (Radiopaedia, portal venous phase), приемлемо от 92 HU (опрос радиологов, цит. по Duke); пёстрая селезёнка — ещё артериальная (LI-RADS);
    почки: паренхиматозная — почка однородная, «двухцветная» = рано (Radiopaedia, CT renal mass);
@@ -280,7 +304,7 @@ RH_WIDGETS["quality-check"] = function (el) {
     chk("arms", "Полосы от рук", "Руки за голову."),
   ];
   const ZONES = [
-    { id: "bca",   name: "БЦА",   fields: [hu("a", "Общая сонная артерия, HU"), hu("b", "Яремная вена, HU (можно не мерить)", true), chk("streak", "Полосы от вен у дуги аорты")], rule: "bca" },
+    { id: "bca",   name: "БЦА",   fields: [hu("a", "Дуга аорты, HU")], rule: "bca" },
     { id: "pe",    name: "ТЭЛА",  fields: [hu("a", "Лёгочный ствол, HU"), hu("b", "Аорта, HU (можно не мерить)", true)], rule: "pe" },
     { id: "aorta", name: "Аорта", fields: [hu("a", "Аорта, HU")], rule: "artery" },
     { id: "arms",  name: "Руки",  fields: [hu("a", "Плечевая артерия, HU")], rule: "artery" },
@@ -304,7 +328,7 @@ RH_WIDGETS["quality-check"] = function (el) {
       ]), rule: "check" },
     ] },
   ];
-  const GOOD = 250, OK = 200, PE_OK = 210, AV_GAP = 50, ABD_GOOD = 280, LIVER_GOOD = 110, LIVER_OK = 92, MAX_HU = 1000;
+  const GOOD = 250, OK = 200, PE_OK = 210, ABD_GOOD = 280, LIVER_GOOD = 110, LIVER_OK = 92, MAX_HU = 1000;
 
   el.innerHTML =
     '<div class="w-label">Что разбираем</div>' +
@@ -373,11 +397,6 @@ RH_WIDGETS["quality-check"] = function (el) {
       "Скан — через " + w + ".",
       "Время считать от начала введения, не от конца.",
     ],
-    streak: () => [
-      "Рука правая?",
-      "Был физраствор 50 мл?",
-      MON,
-    ],
     overtook: () => [
       "Сразу скажите врачу: нужен ещё скан голеней.",
       "Это не ваша ошибка.",
@@ -433,19 +452,7 @@ RH_WIDGETS["quality-check"] = function (el) {
     switch (step.rule) {
       case "artery": return artery(v.a, "Артерия");
 
-      case "bca": {
-        const late = v.b !== null && v.a - v.b <= AV_GAP;
-        if (late && v.a >= OK) verdict("ok", "Поздно", "Яремная почти как сонная");
-        else artery(v.a, "Сонная артерия");
-        const t = [];
-        if (late) { t.push("<b>Запуск поздно.</b>"); todo("late"); }
-        if (c.streak) {
-          t.push("<b>Полосы от вен.</b>");
-          todo("streak");
-          if (out.classList.contains("q-good")) verdict("ok", "Полосы", "Полосы закрывают дугу");
-        }
-        return lines(t);
-      }
+      case "bca": return artery(v.a, "Дуга аорты");          // мерим в дуге, а не в сонной: крупнее, проще попасть
 
       case "pe":
         if (v.a >= GOOD) verdict("good", "Отлично", "Лёгочный ствол " + v.a + " HU");
