@@ -25,7 +25,6 @@ ct-pelvis-f.md
 ct-cap.md
 cta-legs.md
 cta-legs-short.md
-cta-legs-aaa.md
 ct-spine-cervical.md
 ct-spine-thoracic.md
 ct-spine-lumbar.md
@@ -54,6 +53,7 @@ xr-hand.md
 xr-hand-cmc.md
 xr-hand-oa.md
 xr-hand-erosive.md
+xr-ankle.md
 xr-feet.md
 xr-feet-hallux.md
 xr-feet-flat.md
@@ -64,6 +64,7 @@ dxa.md
 
 # Маммография
 mmg.md
+mmg-ds.md
 mmg-mastectomy.md
 mmg-mass.md
 mmg-calc.md
