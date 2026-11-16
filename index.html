@@ -464,7 +464,7 @@ if (window.RH_LAB) {
 
   function parse(text) {
     const lines = text.replace(/\r/g, "").split("\n");
-    const out = { title: "", sub: "", html: "", who: "врач", words: "", sos: false };
+    const out = { title: "", sub: "", html: "", who: "врач", words: "", sos: false, btn: true };
     let html = "", para = [], list = [], ltag = "ul";
     const flushP = () => { if (para.length) { html += "<p>" + inline(para.join(" ")) + "</p>"; para = []; } };
     const flushL = () => { if (list.length) { html += "<" + ltag + ">" + list.map(x => "<li>" + inline(x) + "</li>").join("") + "</" + ltag + ">"; list = []; } };
@@ -479,6 +479,8 @@ if (window.RH_LAB) {
       if (/^Слова:/i.test(t)) { flush(); out.words += " " + t.replace(/^Слова:\s*/i, ""); continue; }
       // «Срочно: да» — экстренный раздел: красная рамка, у лаборанта — красная кнопка вверху главной и кнопка SOS
       if (/^Срочно:/i.test(t)) { flush(); out.sos = true; continue; }
+      // «Кнопка: нет» — раздел без кнопки на главной лаборанта; находится только поиском
+      if (/^Кнопка:/i.test(t)) { flush(); out.btn = !/^Кнопка:\s*нет/i.test(t); continue; }
       // «Позвонить: Код синий | +7 985 954-11-40» — большая кнопка звонка в одно касание
       if (/^Позвонить:/i.test(t)) {
         flush();
@@ -545,6 +547,7 @@ if (window.RH_LAB) {
       if (f === "about.md") { noteEl.innerHTML = '<div class="note">' + d.html + "</div>"; return; }
       const sec = document.createElement("details");
       sec.className = d.sos ? "sec sos" : "sec";
+      if (!d.btn) sec.dataset.nobtn = "1";
       sec.id = f.replace(/\.md$/i, "");
       sec.dataset.words = d.words;
       sec.innerHTML = "<summary><span class=\"t\">" + inline(d.title || f) + "</span>" +
@@ -600,7 +603,7 @@ if (window.RH_LAB) {
         s.querySelector("summary .t").innerHTML + "</button>").join("");
       const sos = secs.filter(s => s.classList.contains("sos"));
       const nav = document.getElementById("labLinks");
-      nav.innerHTML = btns(secs.filter(s => !s.classList.contains("sos")));
+      nav.innerHTML = btns(secs.filter(s => !s.classList.contains("sos") && !s.dataset.nobtn));
       nav.hidden = false;
       const sosNav = document.getElementById("sosLinks");
       sosNav.innerHTML = btns(sos);
