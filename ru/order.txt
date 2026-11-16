@@ -26,3 +26,4 @@ contrast-volume.md
 dose-dlp.md
 roi.md
 quality.md
+retrieve.md
