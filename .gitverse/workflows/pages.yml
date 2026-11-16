@@ -11,6 +11,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Автотесты расчётов и содержимого. Упали — сайт не обновится, а в логе будет, что сломалось.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Tests
+        run: |
+          npm ci
+          npm test
+
       - name: Build site files
         run: |
           mkdir _site

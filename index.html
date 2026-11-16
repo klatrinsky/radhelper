@@ -1036,6 +1036,8 @@ if (window.RH_LAB) {
     return where + " точки терапевтического вмешательства для возраста " + ages;
   }
 
+  window.RH_CALC = CALC;                              // для автотестов (tests/), на работу сайта не влияет
+  window.RH_TEMPLATE = (text, el) => buildTemplate(text, el);
   const INPUT_NAMES = new Set(Object.values(CALC).flatMap(c => c.inputs));
   const num = v => parseFloat(String(v).replace(/[−–—]/g, "-").replace(",", "."));
   const fmt = (x, d) => x.toFixed(d).replace(".", ",");

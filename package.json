@@ -1,0 +1,11 @@
+{
+  "name": "radhelper",
+  "private": true,
+  "description": "Автотесты сайта «Помощник рентгенолога». Сайту для работы ничего из этого не нужно.",
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\""
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}
