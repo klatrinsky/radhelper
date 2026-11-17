@@ -986,14 +986,11 @@ if (window.RH_LAB) {
       return (dxaChanges(v, tg) || []).filter(x => x.sig).map(x => (x.d > 0 ? "положительная" : "отрицательная") +
         " динамика " + x.where + " в виде " + (x.d > 0 ? "прироста" : "снижения") + (x.bmdMode ? " МПК (BMD) на " : " значений T-критерия на ") + x.pct).join(", ");
     } },
-    "RSMI": { inputs: ["ASM", "Рост"], digits: 2,
-      f: (asm, height) => asm > 0 && height > 0 ? asm / Math.pow(height / 100, 2) : NaN },
     "TOTAL BMD": { inputs: ["BMC total", "Area total"], digits: 3,
       f: (bmc, area) => bmc > 0 && area > 0 ? bmc / area : NaN },
-    "МИОПЕНИЯ": { inputs: ["ASM", "Рост"], hidden: true, uses: ["пол"], set: (v, tg) => {
-      const [asm, height] = v;
-      if (!(Number.isFinite(asm) && Number.isFinite(height) && asm > 0 && height > 0)) return { "миопения": 0 };
-      const rsmi = asm / (height / 100) ** 2;
+    "МИОПЕНИЯ": { inputs: ["RSMI"], hidden: true, uses: ["пол"], set: (v, tg) => {
+      const rsmi = v[0];
+      if (!(Number.isFinite(rsmi) && rsmi > 0)) return { "миопения": 0 };
       return { "миопения": rsmi < (tg("пол") === 0 ? 5.5 : 7.0) ? 2 : 1 };
     } },
     "ЧЕРЕЗ 1 ГОД":  { inputs: [], raw: true, text: inYears(1) },
