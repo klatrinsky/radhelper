@@ -926,11 +926,11 @@ if (window.RH_LAB) {
     } };
 
   /* Денситометрия (DXA). Поля по областям: [T позв] [T% позв] [Z позв] [Z% позв] — и так же «шейка 1», «шейка 2», «предпл».
-     «шейка 2» — контралатеральная шейка; [было …] — % по критерию диагноза на прошлом исследовании.
+     «шейка 2» — контралатеральная шейка; [было …] — прошлое значение в % T-критерия.
      Критерий: женщина после менопаузы или мужчина ≥ 50 лет — T; женщина до менопаузы или мужчина < 50 — Z.
      Диагноз — по худшему значению среди видимых областей (Total Body не участвует, его в шаблоне нет):
        T ≥ −1,0 — норма; −2,5 < T < −1,0 — остеопения; T ≤ −2,5 — остеопороз; Z > −2,0 — в пределах ожидаемых, Z ≤ −2,0 — ниже.
-     Динамика — разница % критерия с прошлым исследованием в процентных пунктах; значима, если ≥ LSC области. */
+     Динамика по умолчанию — разница T% с прошлым исследованием в процентных пунктах; значима, если ≥ заданного порога области. */
   const DXA = [   // область: поля, переключатель «есть / нет области», порог значимой динамики (LSC), как назвать в тексте
     { k: "позв",    show: "поясничный отдел", lsc: 3, where: tg => "в поясничном отделе позвоночника" },
     { k: "шейка 1", show: "шейка бедра",      lsc: 4, where: tg => "в шейке " + (tg("бедро") ? "правой" : "левой") + " бедренной кости" },
@@ -965,7 +965,7 @@ if (window.RH_LAB) {
         if (!(Number.isFinite(now) && Number.isFinite(was) && now > 0 && was > 0)) return;
         d = (now - was) / was * 100;
       } else {
-        const now = get(crit + "% " + r.k), was = get("было " + r.k);
+        const now = get("T% " + r.k), was = get("было " + r.k);
         if (!Number.isFinite(now) || !Number.isFinite(was)) return;
         d = now - was;
       }
@@ -984,7 +984,7 @@ if (window.RH_LAB) {
     "ДИНАМИКА": { inputs: DXA_IN, raw: true, text: (v, tg) => {
       const crit = dxa(v, tg).crit;
       return (dxaChanges(v, tg) || []).filter(x => x.sig).map(x => (x.d > 0 ? "положительная" : "отрицательная") +
-        " динамика " + x.where + " в виде " + (x.d > 0 ? "прироста" : "снижения") + (x.bmdMode ? " МПК (BMD) на " : " значений " + crit + "-критерия на ") + x.pct).join(", ");
+        " динамика " + x.where + " в виде " + (x.d > 0 ? "прироста" : "снижения") + (x.bmdMode ? " МПК (BMD) на " : " значений T-критерия на ") + x.pct).join(", ");
     } },
     "RSMI": { inputs: ["ASM", "Рост"], digits: 2,
       f: (asm, height) => asm > 0 && height > 0 ? asm / Math.pow(height / 100, 2) : NaN },
@@ -1060,7 +1060,7 @@ if (window.RH_LAB) {
 
   window.RH_CALC = CALC;                              // для автотестов (tests/), на работу сайта не влияет
   window.RH_TEMPLATE = (text, el) => buildTemplate(text, el);
-  const INPUT_NAMES = new Set(Object.values(CALC).flatMap(c => c.inputs));
+  const INPUT_NAMES = new Set(Object.values(CALC).flatMap(c => c.inputs).concat(["T total", "T% total", "Z total", "Z% total"]));
   const num = v => parseFloat(String(v).replace(/[−–—]/g, "-").replace(",", "."));
   const fmt = (x, d) => x.toFixed(d).replace(".", ",");
 
