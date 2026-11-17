@@ -368,7 +368,7 @@ RH_WIDGETS["quality-check"] = function (el) {
     step = s;
     if (zone.phases) press(".w-ph .pick", "p", s.id);
     box.innerHTML = s.fields.map(f => f.yesno
-      ? '<fieldset class="w-field"><legend class="w-label">' + f.label + '</legend><label><input type="radio" name="q-' + f.k + '" data-k="' + f.k + '" value="yes"> Да</label> &nbsp; <label><input type="radio" name="q-' + f.k + '" data-k="' + f.k + '" value="no"> Нет</label></fieldset>'
+      ? '<fieldset class="w-field"><legend class="w-label">' + f.label + '</legend><label><input type="radio" name="q-' + f.k + '" value="yes"> Да</label> &nbsp; <label><input type="radio" name="q-' + f.k + '" data-k="' + f.k + '" value="no"> Нет</label></fieldset>'
       : f.check
       ? '<label class="w-chk"><input type="checkbox" data-k="' + f.k + '"> ' + f.label + "</label>"
       : '<div class="w-field"><label class="w-label" for="q-' + f.k + '">' + f.label + "</label>" +

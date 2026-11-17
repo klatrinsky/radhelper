@@ -890,7 +890,7 @@ if (window.RH_LAB) {
 
   ["L1–L2", "L2–L3", "L3–L4", "L4–L5", "L5–S1"].forEach(lvl => {
     CALC["S " + lvl] = { inputs: ["S " + lvl], digits: 0, f: s => s,
-      toggle: "стеноз " + lvl, pick: x => x < 75 ? 2 : x < 100 ? 1 : 0, reset: true, pickRaw: true };
+      toggle: "стеноз " + lvl, pick: x => x < 75 ? 2 : x <= 100 ? 1 : 0, reset: true, pickRaw: true };
   });
 
   // КТ-перфузия: межполушарные отношения по бассейнам. Поля [СМА CBF П] и [СМА CBF Л] (и ПМА, ЗМА; CBF, CBV, MTT),
