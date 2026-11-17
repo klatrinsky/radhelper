@@ -275,6 +275,10 @@
   .news .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); }
 
   /* Главная лаборанта: кнопки разделов под строкой поиска (на главной врача их нет) */
+  body.lab #q { display:none; }
+  body.lab .bar { justify-content:center; }
+  body.lab.home .cat { max-height:180px; object-fit:contain; }
+  body.lab.home .lablinks::before { content:"Оглавление"; display:block; flex-basis:100%; text-align:center; font-weight:700; font-size:1.1rem; margin-bottom:5px; }
   .lablinks { display: none; }
   body.home .lablinks:not([hidden]) { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
     max-width: 620px; margin: 16px auto 0; padding: 0 16px; }
@@ -417,7 +421,7 @@ if (window.RH_LAB) document.body.classList.add("lab");
 <script>
 if (window.RH_LAB) {
   document.title = "Помощник лаборанта";
-  document.getElementById("q").placeholder = "Что делаем?";
+  document.getElementById("q").removeAttribute("autofocus");
   document.querySelector("#homeBtn img").src = "img/doctor-cat.jpg";
   document.querySelector("footer p").textContent = "Справочный материал для рентгенолаборантов, не клиническая рекомендация. Решения о введении контраста принимает врач.";
   const side = document.getElementById("sideLink");
@@ -859,7 +863,7 @@ if (window.RH_LAB) {
       toggle: "ADI", pick: x => x > 2 ? 1 : 0 }
   };
 
-  // Площадь позвоночного канала на уровне диска, мм² (Schönström 1985): > 100 — норма, 75–100 — относительный стеноз, < 75 — абсолютный.
+  // Планиметрическая площадь дурального мешка на уровне диска, мм² (Schönström 1985): > 100 — норма, 75–100 — относительный стеноз, < 75 — абсолютный.
   // Для каждого уровня — поле [S L4–L5] и калькулятор {{S L4–L5}}; он сам ставит {#стеноз L4–L5: |относительный|абсолютный}.
   // Стеноз ВСА по сторонам: поля [Dмин П] [Dдист П] [Dлук П] (и Л), калькуляторы {{NASCET П}}, {{ECST П}}.
   // NASCET сам ставит {#градация П: незначимый|умеренный|выраженный}: < 50% — 0, 50–69% — 1, ≥ 70% — 2.
@@ -886,7 +890,7 @@ if (window.RH_LAB) {
 
   ["L1–L2", "L2–L3", "L3–L4", "L4–L5", "L5–S1"].forEach(lvl => {
     CALC["S " + lvl] = { inputs: ["S " + lvl], digits: 0, f: s => s,
-      toggle: "стеноз " + lvl, pick: x => x < 75 ? 2 : x <= 100 ? 1 : 0 };
+      toggle: "стеноз " + lvl, pick: x => x < 75 ? 2 : x < 100 ? 1 : 0, reset: true, pickRaw: true };
   });
 
   // КТ-перфузия: межполушарные отношения по бассейнам. Поля [СМА CBF П] и [СМА CBF Л] (и ПМА, ЗМА; CBF, CBV, MTT),
@@ -934,11 +938,11 @@ if (window.RH_LAB) {
       where: tg => "в шейке " + (tg("бедро") ? "левой" : "правой") + " бедренной кости" },
     { k: "предпл",  show: "предплечье", hiddenFirst: true, lsc: 3, where: tg => "в области " + (tg("рука") ? "правого" : "левого") + " предплечья" }
   ];
-  const DXA_IN = ["Возраст"].concat(DXA.flatMap(r => ["T " + r.k, "T% " + r.k, "Z " + r.k, "Z% " + r.k, "было " + r.k]));
-  const DXA_USES = ["пол", "менопауза", "TBS", "бедро", "рука"].concat(DXA.map(r => r.show));
+  const DXA_IN = ["Возраст"].concat(DXA.flatMap(r => ["T " + r.k, "T% " + r.k, "Z " + r.k, "Z% " + r.k, "было " + r.k, "BMD " + r.k, "BMD было " + r.k]));
+  const DXA_USES = ["пол", "менопауза", "TBS", "бедро", "рука", "режим динамики"].concat(DXA.map(r => r.show));
   const PH = { "Возраст": "__", "FRAX осн": "%", "L1 HU": "HU" };                    // подсказка в пустом поле вместо имени
   PH_MM.forEach(n => { PH[n] = "мм"; });
-  DXA.forEach(r => Object.assign(PH, { ["T " + r.k]: "T", ["T% " + r.k]: "%", ["Z " + r.k]: "Z", ["Z% " + r.k]: "%", ["было " + r.k]: "%" }));
+  DXA.forEach(r => Object.assign(PH, { ["T " + r.k]: "T", ["T% " + r.k]: "%", ["Z " + r.k]: "Z", ["Z% " + r.k]: "%", ["было " + r.k]: "%", ["BMD " + r.k]: "г/см²", ["BMD было " + r.k]: "г/см²" }));
   const r1 = x => Math.round(x * 10) / 10;                         // сравниваем с порогами по одному знаку, как в протоколе
   function dxa(v, tg) {                                             // v — значения полей в порядке DXA_IN
     const get = n => v[DXA_IN.indexOf(n)];
@@ -949,15 +953,23 @@ if (window.RH_LAB) {
   }
   let dxaTbsKey = null;
   const pct = x => fmt(Math.abs(x), 1).replace(/,0$/, "") + "%";
-  function dxaChanges(v, tg) {                                      // значимые изменения: [{ d, text }]
+  function dxaChanges(v, tg) {
     const { crit, regions, get } = dxa(v, tg);
     if (!crit) return null;
+    const bmdMode = tg("режим динамики") === 1;
     const res = [];
     regions.forEach(r => {
-      const now = get(crit + "% " + r.k), was = get("было " + r.k);
-      if (!isFinite(now) || !isFinite(was)) return;
-      const d = r1(now - was);
-      res.push({ d, sig: Math.abs(d) >= r.lsc, where: r.where(tg), pct: pct(d) });
+      let d;
+      if (bmdMode) {
+        const now = get("BMD " + r.k), was = get("BMD было " + r.k);
+        if (!(Number.isFinite(now) && Number.isFinite(was) && now > 0 && was > 0)) return;
+        d = (now - was) / was * 100;
+      } else {
+        const now = get(crit + "% " + r.k), was = get("было " + r.k);
+        if (!Number.isFinite(now) || !Number.isFinite(was)) return;
+        d = now - was;
+      }
+      res.push({ d, sig: Math.abs(d) >= r.lsc, where: r.where(tg), pct: pct(d), bmdMode });
     });
     return res;
   }
@@ -972,7 +984,17 @@ if (window.RH_LAB) {
     "ДИНАМИКА": { inputs: DXA_IN, raw: true, text: (v, tg) => {
       const crit = dxa(v, tg).crit;
       return (dxaChanges(v, tg) || []).filter(x => x.sig).map(x => (x.d > 0 ? "положительная" : "отрицательная") +
-        " динамика " + x.where + " в виде " + (x.d > 0 ? "прироста" : "снижения") + " значений " + crit + "-критерия на " + x.pct).join(", ");
+        " динамика " + x.where + " в виде " + (x.d > 0 ? "прироста" : "снижения") + (x.bmdMode ? " МПК (BMD) на " : " значений " + crit + "-критерия на ") + x.pct).join(", ");
+    } },
+    "RSMI": { inputs: ["ASM", "Рост"], digits: 2,
+      f: (asm, height) => asm > 0 && height > 0 ? asm / Math.pow(height / 100, 2) : NaN },
+    "TOTAL BMD": { inputs: ["BMC total", "Area total"], digits: 3,
+      f: (bmc, area) => bmc > 0 && area > 0 ? bmc / area : NaN },
+    "МИОПЕНИЯ": { inputs: ["ASM", "Рост"], hidden: true, uses: ["пол"], set: (v, tg) => {
+      const [asm, height] = v;
+      if (!(Number.isFinite(asm) && Number.isFinite(height) && asm > 0 && height > 0)) return { "миопения": 0 };
+      const rsmi = asm / (height / 100) ** 2;
+      return { "миопения": rsmi < (tg("пол") === 0 ? 5.5 : 7.0) ? 2 : 1 };
     } },
     "ЧЕРЕЗ 1 ГОД":  { inputs: [], raw: true, text: inYears(1) },
     "ЧЕРЕЗ 2 ГОДА": { inputs: [], raw: true, text: inYears(2) },
@@ -1087,7 +1109,7 @@ if (window.RH_LAB) {
         c.el.textContent = c.value || "__";
         // порог: сравниваем уже округлённое значение, чтобы 0,30 на экране не считалось расширением
         const g = def.toggle && toggles["#" + lower(def.toggle)];
-        if (g && c.value) { g.i = def.pick(num(c.value)); g.show(); }
+        if (g && c.value) { g.i = def.pick(def.pickRaw ? x : num(c.value)); g.show(); }
         else if (g && def.reset) { g.i = 0; g.show(); }
       });
       // невидимые калькуляторы: сами ставят переключатели, если все их поля есть в шаблоне
@@ -1505,7 +1527,7 @@ if (window.RH_LAB) {
     document.body.classList.add("home");
     history.replaceState(null, "", location.pathname + location.search);  // убрать #раздел, ?lab оставить
     window.scrollTo(0, 0);
-    if (fine) q.focus();
+    if (fine && !window.RH_LAB) q.focus();
   }
   document.getElementById("homeBtn").addEventListener("click", home);
   q.addEventListener("keydown", e => { if (e.key === "Escape" && q.value) { e.preventDefault(); home(); } });

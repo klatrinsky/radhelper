@@ -16,6 +16,7 @@ ct-chest-ldct.md
 cta-pulmonary.md
 cta-thoracic-aorta.md
 ct-abdomen.md
+ct-abdomen-contrast.md
 ct-abdomen-short.md
 ct-kidneys.md
 ct-kidneys-contrast.md

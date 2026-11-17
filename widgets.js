@@ -308,7 +308,7 @@ RH_WIDGETS["quality-check"] = function (el) {
     { id: "pe",    name: "ТЭЛА",  fields: [hu("a", "Лёгочный ствол, HU"), hu("b", "Аорта, HU (можно не мерить)", true)], rule: "pe" },
     { id: "aorta", name: "Аорта", fields: [hu("a", "Аорта, HU")], rule: "artery" },
     { id: "arms",  name: "Руки",  fields: [hu("a", "Плечевая артерия, HU")], rule: "artery" },
-    { id: "legs",  name: "Ноги",  fields: [hu("a", "Брюшная аорта, HU"), chk("shin", "Артерии голеней плохо видны")], rule: "legs" },
+    { id: "legs",  name: "Ноги",  fields: [hu("a", "Брюшная аорта, HU"), { k: "shin", label: "Артерии голеней видны?", yesno: true }], rule: "legs" },
     { id: "abd",   name: "Живот", phases: [
       { id: "art", name: "Артериальная", fields: [hu("a", "Аорта на уровне чревного ствола, HU")], rule: "abdArt" },
       { id: "ven", name: "Венозная", when: "60–75 с", fields: [hu("a", "Печень, HU"), chk("spleen", "Селезёнка пёстрая")], rule: "abdVen" },
@@ -367,12 +367,14 @@ RH_WIDGETS["quality-check"] = function (el) {
   function pickStep(s) {
     step = s;
     if (zone.phases) press(".w-ph .pick", "p", s.id);
-    box.innerHTML = s.fields.map(f => f.check
+    box.innerHTML = s.fields.map(f => f.yesno
+      ? '<fieldset class="w-field"><legend class="w-label">' + f.label + '</legend><label><input type="radio" name="q-' + f.k + '" data-k="' + f.k + '" value="yes"> Да</label> &nbsp; <label><input type="radio" name="q-' + f.k + '" data-k="' + f.k + '" value="no"> Нет</label></fieldset>'
+      : f.check
       ? '<label class="w-chk"><input type="checkbox" data-k="' + f.k + '"> ' + f.label + "</label>"
       : '<div class="w-field"><label class="w-label" for="q-' + f.k + '">' + f.label + "</label>" +
         '<input id="q-' + f.k + '" data-k="' + f.k + '" class="w-input" type="text" inputmode="decimal" autocomplete="off" placeholder="HU"></div>').join("");
     if (s.rule === "check") box.insertAdjacentHTML("afterbegin", '<div class="w-label">Отметьте, что видите</div>');
-    box.querySelectorAll("input").forEach(i => i.addEventListener(i.type === "checkbox" ? "change" : "input", show));
+    box.querySelectorAll("input").forEach(i => i.addEventListener(["checkbox", "radio"].includes(i.type) ? "change" : "input", show));
     show();
   }
 
@@ -441,6 +443,8 @@ RH_WIDGETS["quality-check"] = function (el) {
     }
 
     const v = {}, c = {};
+    if (step.rule === "legs" && !box.querySelector('input[name="q-shin"]:checked')) return verdict("none", "—", "Укажите, видны ли артерии голеней");
+    c.shin = !!box.querySelector('input[name="q-shin"][value="no"]:checked');
     box.querySelectorAll('input[type="checkbox"]').forEach(i => { c[i.dataset.k] = i.checked; });
     for (const i of box.querySelectorAll('input[type="text"]')) {
       v[i.dataset.k] = num(i);
