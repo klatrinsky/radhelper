@@ -137,10 +137,20 @@ RH_WIDGETS["contrast-volume"] = function (el) {
     const p = { kg, cm };
     const c = +conc, minC = z.minC || REF;
     const keep = z.fixed && c >= REF;                       // ТЭЛА: флакон 50 мл при 350+
-    const raw = keep ? z.ml(p) : z.ml(p) * REF / c;         // та же доза йода, что при 350
+    const base = z.ml(p);
+    const raw = keep ? base : base * REF / c;         // та же доза йода, что при 350
     const ml = Math.min(MAX, Math.round(raw));
     const capped = Math.round(raw) > MAX;
     const flow = Math.min(FLOW_MAX, z.flow(p));
+    const factors = [kg && kg + " кг", cm && cm + " см"].filter(Boolean);
+    const basis = factors.length ? "Расчёт по " + (kg && cm ? "среднему двух оценок" : kg ? "массе" : "росту") +
+      " (" + factors.join(", ") + ")" : "Фиксированный объём для этой зоны";
+    const explanation = basis + ". Базовый объём при " + REF + " мг йода/мл — " + fmt(base) + " мл. " +
+      (keep ? "При выбранной концентрации используется целый флакон."
+        : "Поправка на концентрацию: базовый объём · " + REF + " / " + c + ", округление до целого мл.") +
+      (capped ? " Сработал предел объёма " + MAX + " мл." : "") +
+      (z.id === "legs" ? " Скорость определяется по массе." : " Скорость задана протоколом для этой зоны.") +
+      " Предел скорости — " + fmt(FLOW_MAX) + " мл/с.";
     outA.innerHTML = '<span class="w-num">' + (keep && z.mlText ? z.mlText : ml + " мл") + "</span>" +
       (keep && z.mlHint ? '<span class="w-hint">' + z.mlHint + "</span>"
         : capped ? '<span class="w-hint">максимум</span>' : "");
@@ -152,7 +162,9 @@ RH_WIDGETS["contrast-volume"] = function (el) {
       (z.warn ? '<div class="w-warn">' + z.warn + "</div>" : "") +
       '<div class="w-rule">Подходит: ' + (z.minC ? z.minC + "–370" : "350 и выше") +
         (keep ? "." : ". Объём пересчитан на " + c + " (база — " + REF + ").") +
-        " Катетер в кисти или вена сомнительная — сообщите врачу до введения.</div>";
+        " Катетер в кисти или вена сомнительная — сообщите врачу до введения.</div>" +
+      '<details><summary>Как рассчитано</summary><p>Локальный протокол отделения · ' +
+      z.name + ". " + explanation + "</p></details>";
   }
 
   /* ---------- переключатели ---------- */

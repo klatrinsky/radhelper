@@ -741,6 +741,9 @@ if (window.RH_LAB) {
       };
 
 
+      // Keep the live form and its calculation state together for each variant.
+      const forms = new Map();
+      let undoReset = null;
       let current = null;
       function show(found, words, keep) {
         if (!found.length) { studyEl.hidden = true; studyEl.innerHTML = ""; current = null; return; }
@@ -773,7 +776,17 @@ if (window.RH_LAB) {
               '<button type="button" class="copy">Скопировать</button></span></div><div class="tpl"></div></div>') +
           (v.hints.length ? '<div class="hints-h">Подсказки</div><div class="hints"></div>' : "");
         if (v.kind === "tool") window.RH_FINDINGS.render(v.tool, studyEl.querySelector(".fx"));
-        const tpl = v.kind === "tool" || v.kind === "page" ? null : buildTemplate(v.text, studyEl.querySelector(".tpl"));
+        let tpl = null;
+        const slot = studyEl.querySelector(".tpl");
+        if (slot) {
+          let form = forms.get(v);
+          if (form) slot.replaceWith(form.root);
+          else {
+            form = { root: slot, api: buildTemplate(v.text, slot) };
+            forms.set(v, form);
+          }
+          tpl = form.api;
+        }
         studyEl.querySelectorAll(".pick").forEach(b => b.onclick = () => render(found, found[+b.dataset.i], 0));
         studyEl.querySelectorAll(".tab").forEach(b => b.onclick = () => render(found, s, +b.dataset.v));
         if (tpl) {
@@ -796,7 +809,24 @@ if (window.RH_LAB) {
           studyEl.querySelector(".tpl").addEventListener("input", e => e.target.classList.remove("miss"));
         }
         const reset = studyEl.querySelector(".reset");
-        if (reset) reset.onclick = () => render(found, s, vi);
+        if (reset) reset.onclick = () => {
+          if (tpl) {
+            undoReset = { variant: v, form: forms.get(v) };
+            forms.delete(v);
+          }
+          render(found, s, vi);
+        };
+        if (undoReset && undoReset.variant === v) {
+          const undo = document.createElement("button");
+          undo.type = "button";
+          undo.textContent = "Отменить сброс";
+          reset.after(undo);
+          undo.onclick = () => {
+            forms.set(v, undoReset.form);
+            undoReset = null;
+            render(found, s, vi);
+          };
+        }
         const box = studyEl.querySelector(".hints");
         if (box) Promise.all(v.hints.map(hint)).then(texts => {
           if (current !== s || !box.isConnected) return;
@@ -815,6 +845,7 @@ if (window.RH_LAB) {
       }
 
       q.addEventListener("input", () => {
+        if (!q.value.trim()) { forms.clear(); undoReset = null; }
         const words = tokens(q.value).filter(w => !STOP.has(w));
         if (!words.length) { show([], words); return; }
         const found = studies.map(s => ({ s, sc: Math.max(...s.variants.map(v => score(words, v))) }))
