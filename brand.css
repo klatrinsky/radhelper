@@ -1,0 +1,35 @@
+.rh-logo {
+  --letter: #000;
+  --teal: #007a80;
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  font-size: 24px;
+  outline-offset: 4px;
+}
+.rh-logo img { width: 1.25em; height: auto; margin-right: .24em; }
+.rh-logo span { display: block; height: 1em; mask-size: 100% 100%; mask-repeat: no-repeat; }
+.rh-rad { width: 1.68em; background: var(--letter); mask-image: url("img/brand-rad.png"); }
+.rh-helper { width: 2.54em; background: var(--teal); mask-image: url("img/brand-helper.png"); }
+.rh-home { display: none; }
+body.home:not(.lab) .rh-home { display: flex; font-size: clamp(40px, 14vw, 72px); margin: 0 auto 18px; }
+.home-btn.rh-logo { align-items: center; }
+body:not(.lab) .home-btn { width: max-content; border: 0; background: transparent; font-size: clamp(16px, 4vw, 23px); }
+body:not(.lab) .home-btn img { width: 1.25em; height: auto; object-fit: contain; }
+body.lab .home-btn { width: 44px; }
+body.lab .home-btn img { width: 100%; height: 100%; margin: 0; }
+body.lab .home-btn span { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .rh-logo { --letter: #f4f6f7; --teal: #4dd5ce; }
+}
+:root[data-theme="dark"] .rh-logo { --letter: #f4f6f7; --teal: #4dd5ce; }
+@media (hover: hover) {
+  :where(body:not(.lab)) .rh-logo img { filter: grayscale(1); }
+  .rh-logo .rh-helper { background: var(--letter); }
+  .rh-logo:is(:hover, :focus-visible) img { filter: grayscale(0); }
+  .rh-logo:is(:hover, :focus-visible) .rh-helper { background: var(--teal); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rh-logo img, body:not(.lab) .home-btn img { transition: filter 200ms; }
+  .rh-helper { transition: background-color 200ms; }
+}

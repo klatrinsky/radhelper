@@ -1,8 +1,11 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><link rel="stylesheet" href="brand.css">
+<link rel="icon" href="favicon.ico?v=perfusion" sizes="16x16 32x32 48x48">
+<link rel="icon" href="favicon.svg?v=perfusion" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=perfusion" sizes="180x180">
+</head><body>
 <title>Помощник рентгенолога</title>
 <meta name="description" content="Помощник рентгенолога. Справочник для врачей и ординаторов.">
 <meta name="robots" content="noindex">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121417" media="(prefers-color-scheme: dark)">
 <style>
@@ -369,14 +372,11 @@
   .home-btn { flex: none; width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 10px;
     background: var(--card); cursor: pointer; overflow: hidden; }
   .home-btn img { display: block; width: 100%; height: 100%; object-fit: cover; }
-  /* кот «вжух» на картинке мелкий и слева — увеличиваем морду */
-  .home-btn img[src$="vzhuh.jpg"] { width: auto; height: 190%; max-width: none; margin: -14px 0 0 -2px; }
   body.home .home-btn { display: none; }
 
   /* Кот — только на пустой главной, после ввода запроса прячется */
   .cat { display: none; }
-  body.home .cat { display: block; width: min(240px, 60vw); margin: 0 auto 12px; border-radius: 12px; mix-blend-mode: multiply; }
-  @media (prefers-color-scheme: dark) { body.home .cat { mix-blend-mode: normal; opacity: .9; } }
+  body.home.lab .cat { display: block; width: min(240px, 60vw); margin: 0 auto 12px; border-radius: 12px; }
   /* подвал главной: внизу экрана, а если текста много — просто ниже, без наложения */
   body.home { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
   body.home footer { margin-top: auto; width: 100%; text-align: center; font-size: 0.72rem; }
@@ -396,10 +396,10 @@ if (window.RH_LAB) document.body.classList.add("lab");
   <a class="side-link" id="sideLink" href="./?lab">Помощник лаборанта →</a>
   <!-- Экстренное (разделы со строкой «Срочно:»): у лаборанта — красными кнопками в самом верху главной -->
   <nav class="soslinks" id="sosLinks" aria-label="Экстренные ситуации" hidden></nav>
-  <img class="cat" src="img/vzhuh.jpg" alt="Кот-волшебник: вжух" width="240">
-  <script>if (window.RH_LAB) { const c = document.querySelector("img.cat"); c.src = "img/doctor-cat.jpg"; c.alt = "Кот в медицинском халате"; }</script>
+  <a class="rh-logo rh-home" href="./" aria-label="RadHelper — на главную"><img src="img/brand-slice.png" alt=""><span class="rh-rad"></span><span class="rh-helper"></span></a>
+  <img class="cat" src="img/doctor-cat.jpg" alt="Кот в медицинском халате" width="240">
   <div class="wrap bar">
-    <button type="button" class="home-btn" id="homeBtn" aria-label="На главную" title="На главную"><img src="img/vzhuh.jpg" alt=""></button>
+    <button type="button" class="home-btn rh-logo" id="homeBtn" aria-label="На главную" title="На главную"><img src="img/brand-slice.png" alt=""><span class="rh-rad"></span><span class="rh-helper"></span></button>
     <input id="q" type="search" placeholder="Что описываем?" autofocus autocomplete="off" enterkeyhint="search" aria-label="Поиск">
   </div>
   <div class="examples" id="examples" hidden></div>
