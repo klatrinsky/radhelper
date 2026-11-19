@@ -926,11 +926,12 @@ if (window.RH_LAB) {
     } };
 
   /* Денситометрия (DXA). Поля по областям: [T позв] [T% позв] [Z позв] [Z% позв] — и так же «шейка 1», «шейка 2», «предпл».
-     «шейка 2» — контралатеральная шейка; [было …] — прошлое значение в % T-критерия.
+     «шейка 2» — контралатеральная шейка; [было …] — прошлое значение в % T- или Z-критерия (по пациенту).
      Критерий: женщина после менопаузы или мужчина ≥ 50 лет — T; женщина до менопаузы или мужчина < 50 — Z.
      Диагноз — по худшему значению среди видимых областей (Total Body не участвует, его в шаблоне нет):
        T ≥ −1,0 — норма; −2,5 < T < −1,0 — остеопения; T ≤ −2,5 — остеопороз; Z > −2,0 — в пределах ожидаемых, Z ≤ −2,0 — ниже.
-     Динамика по умолчанию — разница T% с прошлым исследованием в процентных пунктах; значима, если ≥ заданного порога области. */
+     Динамика по умолчанию — разница T% или Z% (в зависимости от категории пациента) с прошлым исследованием;
+     значима, если ≥ заданного порога области. */
   const DXA = [   // область: поля, переключатель «есть / нет области», порог значимой динамики (LSC), как назвать в тексте
     { k: "позв",    show: "поясничный отдел", lsc: 3, where: tg => "в поясничном отделе позвоночника" },
     { k: "шейка 1", show: "шейка бедра",      lsc: 4, where: tg => "в шейке " + (tg("бедро") ? "правой" : "левой") + " бедренной кости" },
@@ -965,7 +966,7 @@ if (window.RH_LAB) {
         if (!(Number.isFinite(now) && Number.isFinite(was) && now > 0 && was > 0)) return;
         d = (now - was) / was * 100;
       } else {
-        const now = get("T% " + r.k), was = get("было " + r.k);
+        const now = get(crit + "% " + r.k), was = get("было " + r.k);
         if (!Number.isFinite(now) || !Number.isFinite(was)) return;
         d = now - was;
       }
@@ -980,11 +981,11 @@ if (window.RH_LAB) {
     "КРИТЕРИЙ": { inputs: DXA_IN, raw: true, text: (v, tg) => {
       const c = dxa(v, tg).crit;
       return c ? c + "-критерий" : "введите возраст"; } },
-    // «положительная динамика в поясничном отделе позвоночника в виде прироста значений T-критерия на 3,1%, отрицательная …»
+    // «положительная динамика в поясничном отделе позвоночника в виде прироста значений Z-критерия на 3,1%, отрицательная …»
     "ДИНАМИКА": { inputs: DXA_IN, raw: true, text: (v, tg) => {
       const crit = dxa(v, tg).crit;
       return (dxaChanges(v, tg) || []).filter(x => x.sig).map(x => (x.d > 0 ? "положительная" : "отрицательная") +
-        " динамика " + x.where + " в виде " + (x.d > 0 ? "прироста" : "снижения") + (x.bmdMode ? " МПК (BMD) на " : " значений T-критерия на ") + x.pct).join(", ");
+        " динамика " + x.where + " в виде " + (x.d > 0 ? "прироста" : "снижения") + (x.bmdMode ? " МПК (BMD) на " : " значений " + crit + "-критерия на ") + x.pct).join(", ");
     } },
     "TOTAL BMD": { inputs: ["BMC total", "Area total"], digits: 3,
       f: (bmc, area) => bmc > 0 && area > 0 ? bmc / area : NaN },
@@ -1066,6 +1067,9 @@ if (window.RH_LAB) {
     const parts = [], calcs = [], named = {}, linked = {}, toggles = {}, lists = [], lineEls = [];
     const PH_OF = new Map();                    // «+ имя» пустого варианта → { group, inst }
     let missing = [];                           // незаполненное в копируемом тексте: [{ label, el }] — собирается при каждом text()
+    // В DXA предыдущие проценты храним отдельно для T и Z. При смене пациента не подменяем один критерий другим.
+    const dxaPrevious = { T: {}, Z: {} };
+    let dxaPreviousCrit = null;
     const EMPTY = "\u0000";                     // пустой вариант: строка, где только он, при копировании исчезает
     // {{калькулятор}} | {переключатель} — внутри него можно {{калькулятор}} и ещё один {переключатель} (одна вложенность) | [поле]
     const CALC_RE = String.raw`\{\{[^{}\n]*\}\}`;
@@ -1088,6 +1092,22 @@ if (window.RH_LAB) {
     // номер выбранного варианта именованного переключателя (0, если такого нет)
     const tg = n => { const g = toggles["#" + lower(n)]; return g ? g.i % Math.max(...g.insts.map(x => x.views.length)) : 0; };
     function recalc() {
+      // Переключение T ↔ Z меняет и текущую базу сравнения, и поля прошлого исследования.
+      if (named["Возраст"] && named["было позв"] && toggles["#пол"]) {
+        const age = num(named["Возраст"][0].value);
+        const crit = tg("пол") === 0 ? (tg("менопауза") === 0 ? "T" : "Z")
+          : Number.isFinite(age) ? (age >= 50 ? "T" : "Z") : null;
+        if (crit && dxaPreviousCrit && crit !== dxaPreviousCrit) {
+          DXA.forEach(r => {
+            const fields = named["было " + r.k];
+            if (!fields) return;
+            dxaPrevious[dxaPreviousCrit][r.k] = fields[0].value;
+            const remembered = dxaPrevious[crit][r.k] || "";
+            fields.forEach(f => { f.value = remembered; sizeField(f); });
+          });
+        }
+        if (crit) dxaPreviousCrit = crit;
+      }
       calcs.forEach(c => {
         const def = CALC[c.name];
         const vals = def.inputs.map(n => num(named[n] ? named[n][0].value : NaN));
