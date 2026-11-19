@@ -1504,6 +1504,7 @@ if (window.RH_LAB) {
   if (!box || location.protocol === "file:") return;
   const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const line = s => esc(s)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\[\[([^\]]+)\]\]/g, '<span class="try" role="button" tabindex="0" data-q="$1">«$1»</span>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/\[([^\]]+)\]\(((?:\?|\/)[^)\s]*)\)/g, '<a href="$2">$1</a>');   // ссылка внутри сайта, например ?lab
