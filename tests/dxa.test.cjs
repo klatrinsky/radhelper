@@ -84,7 +84,13 @@ test('Служебный переключатель не копируется; �
   assert.match(description, /^> Тип исследования: \{#контроль: Первичное исследование\|Контрольное исследование\./m);
   const copyableDescription = description.split('\n').filter(line => !line.startsWith('>')).join('\n');
   assert.doesNotMatch(copyableDescription, /Контрольное исследование/);
-  assert.doesNotMatch(copyableDescription, /\[было (?:позв|шейка 1|шейка 2|предпл)\]/);
+  const previous = copyableDescription.split('\n').find(line =>
+    line.startsWith('{#контроль: |Предыдущее исследование от [#дата предыдущего исследования]'));
+  assert.ok(previous, 'Исходные данные сравнения находятся в описании контрольного исследования');
+  assert.ok(previous.includes('% ({{КРИТЕРИЙ}})'), 'Критерий сравнения выбирается динамически');
+  for (const region of ['позв', 'шейка 1', 'шейка 2', 'предпл']) {
+    assert.ok(previous.includes(`[было ${region}]%`), `Нет предыдущего процента: ${region}`);
+  }
   assert.match(conclusion.trimStart(), /^\{#контроль: \|Контрольное исследование\.\}/);
   assert.match(conclusion, /от \[#дата предыдущего исследования\]/);
   assert.doesNotMatch(conclusion, /\[было (?:позв|шейка 1|шейка 2|предпл)\]/);
