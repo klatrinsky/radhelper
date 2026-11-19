@@ -184,7 +184,11 @@ RH_WIDGETS["contrast-volume"] = function (el) {
    Лаборант выбирает не анатомическую область, а исследование (STUDIES) — сайт сам берёт область из таблицы МУ (REGIONS).
    Позвоночника в таблице МУ нет — отдел позвоночника считается по области, которую покрывает скан:
    шейный — шея, грудной — грудная клетка, поясничный — брюшная полость, грудной + поясничный — грудь + живот.
-   Фантом (Head 16 / Body 32) указан в протоколе дозы аппарата и должен совпадать с подписью области. */
+   Фантом (Head 16 / Body 32) указан в протоколе дозы аппарата и должен совпадать с подписью области.
+   Для КТА ног с захватом аорты и таза в таблице МУ готового коэффициента нет:
+   используем ориентировочный k=0,0062 из Saltybaeva et al., Radiology 2014 (PMID 24937693).
+   Для КТ кисти k=0,00022 по Radiation Exposure in Patients with Isolated Limb Trauma, 2020 (PMCID 7696613).
+   Эти два коэффициента являются литературной оценкой, не нормативным расчётом по таблице 6.1 МУ. */
 RH_WIDGETS["dose-dlp"] = function (el) {
   const REGIONS = {                                    // таблица 6.1 МУ: область → коэффициент, мЗв/(мГр·см)
     head:       { name: "голова",                  ph: "Head 16", k: 0.0014,  t: "0,0014" },
@@ -196,7 +200,14 @@ RH_WIDGETS["dose-dlp"] = function (el) {
     chabd:      { name: "грудь + живот",           ph: "Body 32", k: 0.013,   t: "0,013" },
     abdpel:     { name: "живот + таз",             ph: "Body 32", k: 0.015,   t: "0,015" },
     chabdpel:   { name: "грудь + живот + таз",     ph: "Body 32", k: 0.014,   t: "0,014" },
-    // нижние конечности (0,00020) убраны: КТА ног сканируют от аорты, а коэффициент — только для ног
+    // Коэффициент МУ применим только при облучении собственно нижних конечностей.
+    legs:       { name: "нижние конечности",       ph: "Body 32", k: 0.00020, t: "0,00020",
+                  note: "Коэффициент 0,00020 относится ТОЛЬКО к нижним конечностям без захвата живота и таза." },
+    // В МУ 2.6.1.2944-11 (табл. 6.1) нет k для протяжённой КТА «аорта + таз + ноги».
+    ctaLegs:    { name: "аорта + таз + ноги",       ph: "Body 32", k: 0.0062,  t: "0,0062",
+                  note: "Ориентировочная оценка для КТА нижних конечностей с захватом аорты и таза (Saltybaeva et al., 2014). Это НЕ коэффициент таблицы 6.1 МУ. При ином охвате сканирования число может быть неверным." },
+    hand:       { name: "кисть / запястье",        ph: "Body 32", k: 0.00022, t: "0,00022",
+                  note: "Для кисти/запястья k=0,00022 взят из клинической литературы (2020), в таблице 6.1 МУ верхние конечности отсутствуют. Это ориентировочная оценка." },
     whole:      { name: "всё тело",                ph: "Body 32", k: 0.017,   t: "0,017" },
   };
   const STUDIES = [                                    // [группа, [исследование, область]]
@@ -211,13 +222,24 @@ RH_WIDGETS["dose-dlp"] = function (el) {
     ["Живот и таз", [
       ["Брюшная полость", "abd"], ["Почки, в т. ч. нативно", "abd"], ["Почки + мочевой пузырь, писография", "abdpel"],
       ["КТА брюшной аорты", "abd"], ["Таз", "pelvis"], ["Живот + таз", "abdpel"]]],
+    ["КТА нижних конечностей", [
+      ["МСКТ АГ нижних конечностей (от аорты до стоп)", "ctaLegs"],
+      ["МСКТ АГ нижних конечностей (только ноги)", "legs"]]],
+    ["КТ суставов конечностей", [
+      ["КТ кисти / запястья", "hand"],
+      ["КТ голеностопного сустава", "legs"],
+      ["КТ стопы", "legs"]]],
     ["Несколько областей одним сканом", [
       ["Грудь + живот", "chabd"], ["Грудь + живот + таз", "chabdpel"], ["Вся аорта (грудная + брюшная)", "chabdpel"],
       ["Всё тело", "whole"]]],
   ];
   const ALL = STUDIES.flatMap(([g, list]) => list.map(([name, r]) => ({ id: g + "|" + name, name, r: REGIONS[r] })));
-  const SRC = "https://legalacts.ru/doc/mu-2613584-19-261-ioniziruiushchee-izluchenie-radiatsionnaja-bezopasnost-izmenenija-v/";
+  const SRC = "https://sudact.ru/law/mu-2612944-11-261-ioniziruiushchee-izluchenie-radiatsionnaia-bezopasnost/metodicheskie-ukazaniia/6/tablitsa-6.1/";
+  const SRC_CTA = "https://pubmed.ncbi.nlm.nih.gov/24937693/";
+  const SRC_HAND = "https://www.mdpi.com/2077-0383/9/11/3609";
   const dec = (n, d) => n.toFixed(d).replace(".", ",");
+  // Для дистальных конечностей 0,00 мЗв было бы ложным нулём.
+  const decDose = n => dec(n, n < 0.001 ? 4 : n < 0.1 ? 3 : 2);
   const esc = s => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
   el.innerHTML =
@@ -229,7 +251,11 @@ RH_WIDGETS["dose-dlp"] = function (el) {
     '<div class="w-rule">Фантом в скобках должен совпадать с протоколом дозы на аппарате (Head 16 / Body 32). ' +
       'Не совпадает — эта таблица не подходит, сообщите врачу. ' +
       'Позвоночника в таблице МУ нет — отдел считается по области, которую захватывает скан.<br>' +
-      'Источник: <a href="' + SRC + '" target="_blank" rel="noopener">МУ 2.6.1.3584-19 (изменения в МУ 2.6.1.2944-11), таблица 6.1, взрослые</a>.</div>';
+      'Основной источник: <a href="' + SRC + '" target="_blank" rel="noopener">МУ 2.6.1.2944-11 (ред. 2019), таблица 6.1, взрослые</a>. ' +
+      'Для КТА ног с захватом аорты и таза и для кисти в МУ нет отдельного коэффициента: ' +
+      '<a href="' + SRC_CTA + '" target="_blank" rel="noopener">КТА ног (Radiology, 2014)</a>, ' +
+      '<a href="' + SRC_HAND + '" target="_blank" rel="noopener">КТ кисти (J. Clin. Med., 2020)</a>. ' +
+      'Эти значения — ориентировочная оценка эффективной дозы, а не нормативный коэффициент МУ.</div>';
 
   const rows = el.querySelector(".w-rows"), out = el.querySelector(".w-out"), sum = el.querySelector(".w-sum");
   let n = 0;
@@ -260,7 +286,7 @@ RH_WIDGETS["dose-dlp"] = function (el) {
     list.forEach(r => { r.querySelector(".w-del").hidden = list.length < 2; });
     out.classList.remove("bad");
     sum.innerHTML = "";
-    let total = 0, used = [], err = "";
+    let total = 0, used = [], notices = new Set(), err = "";
     list.forEach(r => {
       const st = ALL.find(x => x.id === r.querySelector(".w-sel").value), reg = st && st.r;
       const raw = r.querySelector(".w-dlp").value.trim().replace(",", ".");
@@ -270,12 +296,14 @@ RH_WIDGETS["dose-dlp"] = function (el) {
       if (!/^\d+(\.\d+)?$/.test(raw) || +raw <= 0 || +raw > 20000) { err = "Проверьте DLP: нужно число в мГр·см"; return; }
       const e = +raw * reg.k;
       total += e;
-      used.push(st.name + " → " + reg.name + ": " + dec(+raw, raw.includes(".") ? 1 : 0) + " × " + reg.t + " = " + dec(e, 2) + " мЗв");
+      used.push(st.name + " → " + reg.name + ": " + dec(+raw, raw.includes(".") ? 1 : 0) + " × " + reg.t + " = " + decDose(e) + " мЗв");
+      if (reg.note) notices.add(reg.note);
     });
     if (err === "Проверьте DLP: нужно число в мГр·см") { out.classList.add("bad"); out.innerHTML = '<span class="w-hint">' + err + "</span>"; return; }
     if (!used.length || err) { out.innerHTML = '<span class="w-num">—</span><span class="w-hint">' + (err || "выберите исследование и введите DLP") + "</span>"; return; }
-    out.innerHTML = '<span class="w-num">' + dec(total, 2) + " мЗв</span>";
-    sum.innerHTML = used.map(t => '<div class="w-line w-small">' + t + "</div>").join("");
+    out.innerHTML = '<span class="w-num">' + decDose(total) + " мЗв</span>";
+    sum.innerHTML = used.map(t => '<div class="w-line w-small">' + t + "</div>").join("") +
+      Array.from(notices).map(t => '<div class="w-rule"><strong>Важно:</strong> ' + t + "</div>").join("");
   }
 
   el.querySelector(".w-add").addEventListener("click", addRow);
