@@ -280,6 +280,38 @@
   .measure-help-copy { flex: 1 1 240px; }
   .measure-help-copy p { margin: 0 0 7px; }
   .measure-help-copy p:last-child { margin-bottom: 0; }
+  .kl-guide { margin: 0 0 10px; font: 0.875rem/1.45 system-ui, sans-serif; white-space: normal; }
+  .kl-guide .measure-help-toggle {
+    display: inline-flex; align-items: center; gap: 9px; margin: 0; text-decoration: none;
+  }
+  .kl-guide summary { list-style: none; }
+  .kl-guide summary::-webkit-details-marker { display: none; }
+  .kl-guide summary::after {
+    content: ""; width: 6px; height: 6px; border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg);
+  }
+  .kl-guide[open] summary::after { transform: translateY(2px) rotate(225deg); }
+  .kl-panel { margin-top: 8px; padding: 10px; background: var(--head); border: 1px solid var(--line); border-radius: 10px; }
+  .kl-images { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 142px), 1fr)); gap: 8px; }
+  .kl-images figure { margin: 0; text-align: center; }
+  .kl-zoom {
+    display: block; width: 100%; padding: 0; border: 0; border-radius: 6px;
+    background: #14171a; cursor: zoom-in;
+  }
+  .kl-zoom:focus-visible, .kl-viewer button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .kl-images img { display: block; width: 100%; height: 210px; object-fit: contain; background: #14171a; border-radius: 6px; }
+  .kl-images figcaption { padding-top: 4px; font-weight: 600; }
+  .kl-source { margin: 8px 0 0; color: var(--muted); font-size: 0.8rem; }
+  .kl-viewer {
+    box-sizing: border-box; width: min(96vw, 760px); max-height: 94dvh; margin: auto;
+    padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink);
+  }
+  .kl-viewer::backdrop { background: rgb(0 0 0 / 72%); }
+  .kl-viewer-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .kl-viewer img {
+    display: block; width: 100%; height: min(74vh, 740px); height: min(74dvh, 740px);
+    object-fit: contain; background: #14171a; border-radius: 6px; cursor: zoom-out;
+  }
   .study details.sec { margin: 0; }
   .toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
     bottom: calc(20px + env(safe-area-inset-bottom)); background: var(--ink); color: var(--bg);
@@ -939,6 +971,43 @@ if (window.RH_LAB) {
     return r.text();
   });
 
+  function addKellgrenGuide(el, joint) {
+    const knee = joint === "колено";
+    const folder = knee ? "kellgren-knee" : "kellgren-hip";
+    const anatomy = knee ? "коленного сустава" : "тазобедренного сустава";
+    const source = knee
+      ? 'D. J. Solomon, P. McLoughlin. <a href="https://assets.cureus.com/uploads/original_article/pdf/420801/20251029-207681-fherkc.pdf#page=3" target="_blank" rel="noopener">Cureus, 2025, рис. 1–5</a> · Размер снимков уменьшен.'
+      : 'R. M. Huzum и соавт. <a href="https://mdpi-res.com/d_attachment/diagnostics/diagnostics-15-01932/article_deploy/diagnostics-15-01932.pdf?version=1753970717#page=5" target="_blank" rel="noopener">Diagnostics, 2025, рис. 2</a> · Панели разделены на отдельные снимки.';
+    const figures = Array.from({ length: 5 }, (_, grade) => {
+      const src = "img/" + folder + "/kl-" + grade + ".jpg";
+      const alt = "Рентгенограмма " + anatomy + ", степень " + grade;
+      return '<figure><button type="button" class="kl-zoom" aria-haspopup="dialog" aria-label="Увеличить снимок: степень ' + grade +
+        '"><img src="' + src + '" loading="lazy" alt="' + alt + '"></button><figcaption>Степень ' + grade + '</figcaption></figure>';
+    }).join("");
+    const guide = document.createElement("details");
+    guide.className = "kl-guide";
+    guide.innerHTML = '<summary class="measure-help-toggle">Сравнить степени Келлгрена — Лоуренса</summary>' +
+      '<div class="kl-panel"><div class="kl-images">' + figures + '</div>' +
+      '<p class="kl-source">' + source + ' <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p></div>' +
+      '<dialog class="kl-viewer" aria-label="Увеличенная рентгенограмма">' +
+      '<div class="kl-viewer-bar"><strong></strong><button type="button" class="measure-help-toggle" autofocus>Закрыть</button></div><img alt=""></dialog>';
+    const dialog = guide.querySelector("dialog");
+    const enlarged = dialog.querySelector("img");
+    guide.querySelectorAll(".kl-zoom").forEach(button => {
+      button.addEventListener("click", () => {
+        const image = button.querySelector("img");
+        dialog.querySelector("strong").textContent = button.parentElement.querySelector("figcaption").textContent;
+        enlarged.src = image.getAttribute("src");
+        enlarged.alt = image.alt;
+        dialog.showModal();
+      });
+    });
+    dialog.querySelector("button").addEventListener("click", () => dialog.close());
+    enlarged.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
+    el.append(guide);
+  }
+
   function addEvansGuide(fields) {
     // Кнопка стоит снаружи переключателя «Желудочки».
     const control = fields[0].closest(".tg");
@@ -1590,7 +1659,10 @@ if (window.RH_LAB) {
     const lines = text.split("\n");
     lines.forEach((line, i) => {
       const ctl = line.match(/^>\s?(.*)$/);
-      if (line.trim() === "> {{ВИЛЛИЗИЕВ КРУГ}}") {
+      const kl = ctl?.[1].match(/^Келлгрен — Лоуренс: (колено|ТБС)$/);
+      if (kl) {
+        addKellgrenGuide(el, kl[1]);
+      } else if (line.trim() === "> {{ВИЛЛИЗИЕВ КРУГ}}") {
         const panel = document.createElement("section");
         el.append(panel);
         window.createWillisDiagram(panel, result => {
