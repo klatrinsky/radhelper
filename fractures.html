@@ -112,12 +112,12 @@
     ankle:{label:'Голеностопный сустав',right:'правого голеностопного сустава',left:'левого голеностопного сустава',bones:['tibia','fibula','talus','calcaneus']},
     foot:{label:'Стопа',right:'правой стопы',left:'левой стопы',bones:['talus','calcaneus',...range(1,5,'mt'),...footPhalanx]},
   };
-  const morphs={unspecified:'',transverse:'поперечный',oblique:'косой',spiral:'спиральный',longitudinal:'продольный',comminuted:'оскольчатый',impacted:'вколоченный',avulsion:'отрывной',depressed:'импрессионный'};
-  const morphLabels={unspecified:'Не уточнять',transverse:'Поперечный',oblique:'Косой',spiral:'Спиральный',longitudinal:'Продольный',comminuted:'Оскольчатый',impacted:'Вколоченный',avulsion:'Отрывной',depressed:'Импрессионный'};
+  const morphs={unspecified:'',transverse:'поперечный',oblique:'косой',spiral:'спиральный',longitudinal:'продольный',comminuted:'оскольчатый',avulsion:'отрывной',depressed:'импрессионный'};
+  const morphLabels={unspecified:'Не уточнять',transverse:'Поперечный',oblique:'Косой',spiral:'Спиральный',longitudinal:'Продольный',comminuted:'Оскольчатый',avulsion:'Отрывной',depressed:'Импрессионный'};
   const options=(array,selected)=>array.map(([v,label])=>`<option value="${escapeHtml(v)}" ${v===selected?'selected':''}>${escapeHtml(label)}</option>`).join('');
   function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));}
   let serial=0;
-  const defaultFracture = (boneID='radius')=>({id:++serial,bone:boneID,loc:bones[boneID]?.locations[0]?.id||'',customLoc:'',morph:'unspecified',displacement:'unspecified',width:false,widthMm:'',widthDirection:'',length:false,lengthMm:'',lengthDirection:'',angular:false,angleDeg:'',angleDirection:'',joint:'unspecified',stepMm:'',depressionMm:'',callus:'none',line:'none',status:'none',dynamics:'none'});
+  const defaultFracture = (boneID='radius')=>({id:++serial,bone:boneID,loc:bones[boneID]?.locations[0]?.id||'',customLoc:'',morph:'unspecified',impacted:false,displacement:'unspecified',width:false,widthMm:'',widthDirection:'',length:false,lengthMm:'',lengthDirection:'',angular:false,angleDeg:'',angleDirection:'',joint:'unspecified',stepMm:'',depressionMm:'',callus:'none',line:'none',status:'none',dynamics:'none'});
   const state={region:'forearm',side:'right',projections:'2',projectionType:'',mode:'primary',prevDate:'',fractures:[defaultFracture()]};
   // For an easy first click, start at the anatomically common distal radial location.
   state.fractures[0].loc='distmetaepi';
@@ -137,7 +137,7 @@
         <div class="fields">${field('bone','Повреждённая кость',`<select data-key="bone">${boneOptions(fr)}</select>`)}${field('loc','Локализация',`<select data-key="loc">${locOptions(fr)}</select>`)}
           <div class="field full ${fr.loc==='custom'?'':'hidden'}" data-show="custom"><label>Своя локализация (в родительном падеже, например «дистального метафиза»)</label><input class="input" data-key="customLoc" value="${escapeHtml(fr.customLoc)}" placeholder="Введите локализацию"></div>
         </div>
-        <details class="mini-details" open><summary>Характер перелома <span class="quiet">тип линии / морфология</span></summary><div class="inner">${field('morph','Характер перелома',`<select data-key="morph">${options(Object.entries(morphLabels),fr.morph)}</select>`)}<div class="quiet">Выбирается одна основная морфологическая характеристика перелома.</div></div></details>
+        <details class="mini-details" open><summary>Характер перелома <span class="quiet">тип линии / морфология</span></summary><div class="inner">${field('morph','Характер перелома',`<select data-key="morph">${options(Object.entries(morphLabels),fr.morph)}</select>`)}<label class="checkline"><input type="checkbox" data-key="impacted" ${fr.impacted?'checked':''}> Вколочение отломков</label></div></details>
         <details class="mini-details" open><summary>Смещение отломков <span class="quiet">направление и величина</span></summary><div class="inner">
           <div class="field"><label>Наличие смещения</label><select data-key="displacement">${options([['unspecified','Не указывать'],['no','Без смещения'],['yes','Есть смещение']],fr.displacement)}</select></div>
           <div class="f-grid ${enabled?'':'hidden'}" data-show="displaced">
@@ -187,14 +187,23 @@
   function consolidationText(fr){const out=[];if(fr.callus==='forming')out.push('Отмечается формирование костной мозоли.');if(fr.callus==='marked')out.push('Определяется выраженная костная мозоль.');if(fr.line==='clear')out.push('Линия перелома прослеживается.');if(fr.line==='partial')out.push('Линия перелома прослеживается частично.');if(fr.line==='absent')out.push('Линия перелома не визуализируется.');return out.join(' ');}
   function friendlyDate(iso){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?`${m[3]}.${m[2]}.${m[1]}`:'';}
   function dynamicText(fr){if(state.mode!=='followup'||fr.dynamics==='none')return '';const intro=state.prevDate?`По сравнению с исследованием от ${friendlyDate(state.prevDate)}`:'По сравнению с предыдущим исследованием';return intro+({positive:' отмечается положительная рентгенологическая динамика.',stable:' существенной рентгенологической динамики не выявлено.',negative:' отмечается отрицательная рентгенологическая динамика.'}[fr.dynamics]||'.');}
-  function describeOne(fr){const displacement=shiftDetails(fr);const head=capitalize(fractureName(fr))+(displacement.short?' '+displacement.short:'')+'.';return [head,displacement.details,jointText(fr),consolidationText(fr),dynamicText(fr)].filter(Boolean).join(' ');}
-  function concludeOne(fr){
-    const morph=morphs[fr.morph]; const shift=shiftDetails(fr).short;
-    let start;
-    if(fr.status==='consolidated')start=`Консолидированный ${morph?morph+' ':''}перелом ${areaPhrase(fr)}`;
-    else start=capitalize(fractureName(fr));
-    const parts=[start];if(shift)parts[0]+=' '+shift;if(fr.joint==='yes')parts.push('с вовлечением суставной поверхности');if(fr.status==='consolidating')parts.push('в стадии консолидации');
-    return parts.join(', ')+'.';
+  function describeOne(fr) {
+    const displacement = shiftDetails(fr);
+    const head = capitalize(fractureName(fr)) + (displacement.short ? ' ' + displacement.short : '') + '.';
+    const impaction = fr.impacted ? 'Определяется вколочение костных отломков.' : '';
+    return [head, impaction, displacement.details, jointText(fr), consolidationText(fr), dynamicText(fr)]
+      .filter(Boolean).join(' ');
+  }
+  function concludeOne(fr) {
+    const diagnosis = [
+      fr.status === 'consolidated' ? 'консолидированный' : '',
+      fr.joint === 'yes' ? 'внутрисуставной' : '',
+      fr.impacted ? 'вколоченный' : '',
+      fractureName(fr),
+      fr.displacement === 'yes' ? 'со смещением' : fr.displacement === 'no' ? 'без смещения' : '',
+      fr.status === 'consolidating' ? 'в стадии консолидации' : '',
+    ];
+    return capitalize(diagnosis.filter(Boolean).join(' ')) + '.';
   }
   function report(){
     const reg=regions[state.region];const projectionCount={1:'в одной проекции',2:'в двух проекциях',3:'в трёх проекциях'}[state.projections];

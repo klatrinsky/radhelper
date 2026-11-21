@@ -2,6 +2,7 @@
    ввёл поля в шаблон → какой текст уйдёт в заключение. */
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { JSDOM } = require("jsdom");
 const { openSite, read } = require("./env");
 
 let W, C;
@@ -195,4 +196,69 @@ test("шаблоны КТА БЦА: схема Виллизиева круга �
     el.querySelector(".willis-clear").click();
     assert.doesNotMatch(tpl.text(), /Виллизиев круг|Не визуализируется передняя соединительная артерия/i, file);
   }
+});
+
+test("КТ ОГК: фраза о свежих изменениях исчезает при находке и возвращается после сброса", () => {
+  const fresh = /свежих (?:очаговых и )?инфильтративных изменений/gi;
+  for (const [file, option, count] of [
+    ["ct-chest.md", "+ консолидация", 2],
+    ["ct-chest-short.md", "Подозрительных очагов нет.", 2],
+    ["ct-cap.md", "+ очаги лёгких", 1],
+  ]) {
+    const { el, tpl } = template(file);
+    const toggle = [...el.querySelectorAll(".tg")].find(node => node.firstElementChild.textContent === option);
+    assert.ok(toggle, file);
+    assert.equal(tpl.text().match(fresh)?.length, count, file);
+    toggle.click();
+    assert.equal(tpl.text().match(fresh), null, file);
+    for (let i = 1; i < toggle.children.length; i++) toggle.click();
+    assert.equal(tpl.text().match(fresh)?.length, count, file);
+  }
+
+  const { tpl, cycle, type } = template("ct-chest.md");
+  cycle("Сердце");
+  assert.equal(tpl.text().match(fresh), null);
+  cycle("Сердце");
+  assert.equal(tpl.text().match(fresh)?.length, 2);
+  type("L1 HU", "100");
+  assert.equal(tpl.text().match(fresh), null);
+  type("L1 HU", "130");
+  assert.equal(tpl.text().match(fresh)?.length, 2);
+
+  const screening = template("ct-chest-ldct.md");
+  const findings = screening.el.querySelector(".tg");
+  assert.match(screening.tpl.text(), /Инфильтративных изменений нет\.[\s\S]*Lung-RADS 1/);
+  findings.click();
+  assert.doesNotMatch(screening.tpl.text(), /Инфильтративных изменений нет|Lung-RADS 1/);
+  assert.equal(screening.tpl.missing().length, 2);
+  findings.click();
+  assert.match(screening.tpl.text(), /Lung-RADS 1/);
+});
+
+test("конструктор переломов: формулировка диагноза объединяет суставное вовлечение и вколочение", () => {
+  const dom = new JSDOM(read("fractures.html"), { runScripts: "dangerously" });
+  try {
+    const { document, Event } = dom.window;
+    const output = id => document.getElementById(id).textContent;
+    const choose = (key, value) => {
+      const field = document.querySelector(`[data-key="${key}"]`);
+      field.value = value;
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    assert.match(output("conclusion"), /^Перелом /);
+    choose("morph", "oblique");
+    choose("joint", "yes");
+    choose("stepMm", "2");
+    assert.match(output("conclusion"), /^Внутрисуставной косой перелом /);
+    document.querySelector('[data-key="impacted"]').click();
+    assert.match(output("description"), /Определяется вколочение костных отломков\./);
+    assert.match(output("description"), /ступенька суставной поверхности до 2 мм/);
+    assert.match(output("conclusion"), /^Внутрисуставной вколоченный косой перелом /);
+    assert.doesNotMatch(output("conclusion"), /ступенька|суставная поверхность/i);
+    choose("joint", "no");
+    assert.match(output("conclusion"), /^Вколоченный косой перелом /);
+    document.getElementById("resetBtn").click();
+    assert.match(output("conclusion"), /^Перелом /);
+  } finally { dom.window.close(); }
 });
