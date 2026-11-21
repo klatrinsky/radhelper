@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-labelledby="title">
+  <title id="title">Измерение индекса Эванса на аксиальном срезе</title>
+  <rect width="240" height="200" rx="10" fill="#19232f"/>
+  <path d="M120 12 C67 12 34 48 34 99 C34 151 71 188 120 188 C169 188 206 151 206 99 C206 48 173 12 120 12Z"
+    fill="#e4eaf0" stroke="#91a2b4" stroke-width="2"/>
+  <path d="M120 21 C73 21 43 53 43 100 C43 147 77 179 120 179 C163 179 197 147 197 100 C197 53 167 21 120 21Z"
+    fill="#47576a" stroke="#a2b0bf" stroke-width="1.5"/>
+  <path d="M120 27v24m0 101v20 M53 87q8-14 15-17m-10 61q7 14 16 19m113-63q-8-14-15-17m10 61q-7 14-16 19"
+    fill="none" stroke="#718094" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M87 66 C87 57 92 53 98 56 C105 59 111 70 118 80 C119 85 115 92 112 96 C108 104 106 113 101 120 C98 125 93 122 95 116 C102 104 105 94 101 86 C96 78 87 76 87 66Z
+    M153 66 C153 57 148 53 142 56 C135 59 129 70 122 80 C121 85 125 92 128 96 C132 104 134 113 139 120 C142 125 147 122 145 116 C138 104 135 94 139 86 C144 78 153 76 153 66Z"
+    fill="#222e3d" stroke="#9daaba" stroke-width="1.4"/>
+  <g fill="none" stroke-width="2.5" stroke-linecap="round">
+    <path d="M87 62v8m0-4h66m0-4v8" stroke="#ffd180"/>
+    <path d="M43 95v10m0-5h154m0-5v10" stroke="#91ddff"/>
+  </g>
+  <g font-family="system-ui,sans-serif" font-size="15" font-weight="700" text-anchor="middle">
+    <text x="120" y="60" fill="#ffd180">A</text>
+    <text x="120" y="117" fill="#91ddff">B</text>
+  </g>
+</svg>
