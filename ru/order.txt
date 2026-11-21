@@ -23,6 +23,7 @@ sos-extravasation.md
 contrast-questions.md
 catheter-faq.md
 contrast-volume.md
+injector.md
 dose-dlp.md
 roi.md
 quality.md
