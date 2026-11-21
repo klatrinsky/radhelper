@@ -249,8 +249,19 @@
   .fx-src li { font-size: 0.95rem; font-weight: 600; line-height: 1.4; margin: 4px 0; }
   .fx-src-n { margin-top: 8px; font-size: 0.82rem; color: var(--muted); }
   @media (max-width: 640px) { .fx-label { flex-basis: 100%; } }
-  .hints-h { margin: 6px 0 -4px; font-size: 0.78rem; font-weight: 600; letter-spacing: .06em;
-    text-transform: uppercase; color: var(--muted); }
+  .study-hints > summary { display: inline-flex; align-items: center; gap: 12px; min-height: 44px;
+    padding: 8px 14px; border: 1px solid var(--accent); border-radius: 10px;
+    background: var(--card); background: color-mix(in srgb, var(--accent) 8%, var(--card));
+    color: var(--accent); font-size: 0.9rem; font-weight: 600; list-style: none; cursor: pointer; }
+  .study-hints > summary::-webkit-details-marker { display: none; }
+  .study-hints > summary::after { content: ""; width: 7px; height: 7px;
+    border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+    transform: translateY(-2px) rotate(45deg); }
+  .study-hints > summary:hover, .study-hints[open] > summary {
+    background: var(--head); background: color-mix(in srgb, var(--accent) 15%, var(--card)); }
+  .study-hints > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .study-hints[open] > summary::after { transform: translateY(2px) rotate(225deg); }
+  .study-hints[open] > .hints { margin-top: 8px; }
   .study details.sec { margin: 0; }
   .toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
     bottom: calc(20px + env(safe-area-inset-bottom)); background: var(--ink); color: var(--bg);
@@ -810,7 +821,7 @@ if (window.RH_LAB) {
               '<div class="sheet"><div class="sheet-bar"><span>Шаблон · ' + esc(v.variant) + '</span>' +
               '<span class="btns"><button type="button" class="reset">Сбросить</button>' +
               '<button type="button" class="copy">Скопировать</button></span></div><div class="tpl"></div></div>') +
-          (v.hints.length ? '<div class="hints-h">Подсказки</div><div class="hints"></div>' : "");
+          (v.hints.length ? '<details class="study-hints"><summary>Подсказки</summary><div class="hints"></div></details>' : "");
         const share = studyEl.querySelector(".share-protocol");
         if (share) share.onclick = () => copy(protocolUrl(v).href);
         if (v.kind === "tool") window.RH_FINDINGS.render(v.tool, studyEl.querySelector(".fx"));
