@@ -49,10 +49,10 @@ async function openSite({ lab = false } = {}) {
   return w;
 }
 
-/* Виджет отдельно, без всего сайта: пустая страница + widgets.js */
+/* Виджет отдельно, без всего сайта: пустая страница + assets/js/widgets.js */
 function widget(name) {
   const dom = new JSDOM("<!doctype html><div id=w></div>", { runScripts: "outside-only", url: BASE });
-  dom.window.eval(fs.readFileSync(path.join(ROOT, "widgets.js"), "utf8"));
+  dom.window.eval(fs.readFileSync(path.join(ROOT, "assets/js/widgets.js"), "utf8"));
   const el = dom.window.document.getElementById("w");
   dom.window.RH_WIDGETS[name](el);
   const $ = s => el.querySelector(s);

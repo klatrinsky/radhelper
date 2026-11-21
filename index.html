@@ -1,7 +1,7 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><link rel="stylesheet" href="brand.css">
-<link rel="icon" href="favicon.ico?v=perfusion" sizes="16x16 32x32 48x48">
-<link rel="icon" href="favicon.svg?v=perfusion" type="image/svg+xml" sizes="any">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=perfusion" sizes="180x180">
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><link rel="stylesheet" href="assets/css/brand.css">
+<link rel="icon" href="assets/icons/favicon.ico?v=perfusion" sizes="16x16 32x32 48x48">
+<link rel="icon" href="assets/icons/favicon.svg?v=perfusion" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=perfusion" sizes="180x180">
 </head><body>
 <title>Помощник рентгенолога</title>
 <meta name="description" content="Помощник рентгенолога. Справочник для врачей и ординаторов.">
@@ -358,7 +358,7 @@
   .news-all a { color: var(--accent); }
   .news-all .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); }
 
-  /* Примеры под строкой поиска — только на главной врача. Список — в examples.txt */
+  /* Примеры под строкой поиска — только на главной врача. Список — в content/examples.txt */
   .examples { display: none; }
   body.home .examples:not([hidden]) { display: block; max-width: 620px; margin: 12px auto 0; padding: 0 16px;
     text-align: center; color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
@@ -432,20 +432,20 @@ if (window.RH_LAB) {
 </script>
 <div class="toast" id="toast" hidden></div>
 <button type="button" class="sos-fab" id="sosFab" aria-label="Экстренные ситуации" title="Анафилаксия, экстравазация">SOS</button>
-<script src="findings.js"></script>
-<link rel="stylesheet" href="willis.css">
-<script src="willis-classification.js"></script>
-<script src="willis.js"></script>
-<script src="widgets.js"></script>
-<script src="feedback.js"></script>
+<script src="assets/js/findings.js"></script>
+<link rel="stylesheet" href="assets/css/willis.css">
+<script src="assets/js/willis-classification.js"></script>
+<script src="assets/js/willis.js"></script>
+<script src="assets/js/widgets.js"></script>
+<script src="assets/js/feedback.js"></script>
 
 <script>
 /* =====================================================================
    Менять этот файл не нужно.
    Тексты лежат в папке ru/, порядок разделов — в ru/order.txt.
    Шаблоны заключений — в папке templates/, порядок — в templates/order.txt.
-   Находки («что я нашёл») — в папке tools/, порядок — в tools/order.txt, движок — findings.js.
-   Как оформлять тексты — см. README.md в корне репозитория.
+   Находки («что я нашёл») — в папке tools/, порядок — в tools/order.txt, движок — assets/js/findings.js.
+   Как оформлять тексты — см. docs/SYNTAX.md.
    ===================================================================== */
 (function () {
   const DIR = "ru/";
@@ -498,7 +498,7 @@ if (window.RH_LAB) {
         html += '<a class="call" href="tel:' + tel + '">📞 ' + (num ? esc(who) + ' · <span class="nw">' + esc(num) + "</span>" : '<span class="nw">' + esc(who) + "</span>") + "</a>";
         continue;
       }
-      // калькулятор из widgets.js: «Виджет: имя»
+      // калькулятор из assets/js/widgets.js: «Виджет: имя»
       if (/^Виджет:/i.test(t)) { flush(); html += '<div class="widget" data-widget="' + esc(t.replace(/^Виджет:\s*/i, "").trim()) + '"></div>'; continue; }
       if (/^##+ /.test(t)) { flush(); html += "<h3>" + inline(t.replace(/^##+ /, "")) + "</h3>"; continue; }
       if (/^> ?/.test(t) && !out.sub && !html) { flush(); out.sub = t.replace(/^> ?/, ""); continue; }
@@ -567,7 +567,7 @@ if (window.RH_LAB) {
     });
     listEl.querySelectorAll(".widget").forEach(el => {
       const fn = (window.RH_WIDGETS || {})[el.dataset.widget];
-      if (fn) fn(el); else el.innerHTML = '<p class="err">Нет виджета «' + esc(el.dataset.widget) + '» в widgets.js</p>';
+      if (fn) fn(el); else el.innerHTML = '<p class="err">Нет виджета «' + esc(el.dataset.widget) + '» в assets/js/widgets.js</p>';
     });
     setup();
     if (!window.RH_LAB) templates(parsed);   // шаблоны заключений лаборанту не нужны
@@ -1548,7 +1548,7 @@ if (window.RH_LAB) {
 })();
 </script>
 <script>
-/* «Что нового»: news.md у врача, news_lab.md у лаборанта. «# …» — заголовок, «- …» — пункт.
+/* «Что нового»: content/news.md у врача, content/news_lab.md у лаборанта. «# …» — заголовок, «- …» — пункт.
    [[слово]] подставляет запрос в поиск врача; [текст](?lab#раздел) открывает раздел у лаборанта.
    На главной — три верхних выпуска. Если выпусков больше, в подвале появляется «Архив новостей»:
    окно со всеми выпусками выбранного файла. */
@@ -1579,7 +1579,7 @@ if (window.RH_LAB) {
   }
   const close = () => { if (dlg.open) dlg.close(); };
 
-  fetch(window.RH_LAB ? "news_lab.md" : "news.md", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
+  fetch(window.RH_LAB ? "content/news_lab.md" : "content/news.md", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
     let blocks = [];
     t.replace(/\r/g, "").split("\n").forEach(l => {
       l = l.trim();
@@ -1615,7 +1615,7 @@ if (window.RH_LAB) {
 
 <script>
 /* Примеры на главной и возврат домой.
-   Примеры: examples.txt — по одному на строке, при каждом открытии 3 случайных; клик подставляет текст в поиск.
+   Примеры: content/examples.txt — по одному на строке, при каждом открытии 3 случайных; клик подставляет текст в поиск.
    Домой: кот слева от поиска или Esc в строке поиска — очищает запрос и возвращает на пустую главную.
    Esc работает только в строке поиска: в полях шаблона он стёр бы всё, что врач уже набрал. */
 (function () {
@@ -1636,7 +1636,7 @@ if (window.RH_LAB) {
 
   if (window.RH_LAB || !ex || location.protocol === "file:") return;          // у лаборанта на главной кнопки разделов
   const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  fetch("examples.txt", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
+  fetch("content/examples.txt", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
     const all = t.replace(/\r/g, "").split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("#"));
     if (!all.length) return;
     for (let i = all.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [all[i], all[j]] = [all[j], all[i]]; }

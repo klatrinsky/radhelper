@@ -39,7 +39,7 @@ test("«Подсказки:» в шаблонах и находках ссыла
     }
 });
 
-test("каждый «Виджет:» есть в widgets.js", () => {
+test("каждый «Виджет:» есть в assets/js/widgets.js", () => {
   for (const f of list("ru").filter(f => f.endsWith(".md")))
     for (const m of read("ru/" + f).matchAll(/^Виджет:\s*(.+)$/gmi))
       assert.ok(W.RH_WIDGETS[m[1].trim()], "ru/" + f + ": нет виджета «" + m[1].trim() + "»");

@@ -9,8 +9,8 @@
 }
 .rh-logo img { width: 1.25em; height: auto; margin-right: .24em; }
 .rh-logo span { display: block; height: 1em; mask-size: 100% 100%; mask-repeat: no-repeat; }
-.rh-rad { width: 1.68em; background: var(--letter); mask-image: url("img/brand-rad.png"); }
-.rh-helper { width: 2.54em; background: var(--teal); mask-image: url("img/brand-helper.png"); }
+.rh-rad { width: 1.68em; background: var(--letter); mask-image: url("../../img/brand-rad.png"); }
+.rh-helper { width: 2.54em; background: var(--teal); mask-image: url("../../img/brand-helper.png"); }
 .rh-home { display: none; }
 body.home:not(.lab) .rh-home { display: flex; font-size: clamp(40px, 14vw, 72px); margin: 0 auto 18px; }
 .home-btn.rh-logo { align-items: center; }

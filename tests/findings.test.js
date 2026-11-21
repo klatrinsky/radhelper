@@ -1,4 +1,4 @@
-/* Находки (tools/*.md через findings.js): какой вывод получит врач при заданных признаках.
+/* Находки (tools/*.md через assets/js/findings.js): какой вывод получит врач при заданных признаках.
    Пороги — по источникам из самих файлов: ACR/ESE (надпочечник), LI-RADS v2018 / ACR (печень), Fleischner 2017 (лёгкое). */
 const test = require("node:test");
 const assert = require("node:assert/strict");
