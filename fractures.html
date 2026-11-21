@@ -24,9 +24,9 @@
 <body>
   <div class="topbar"><div class="topinner"><a class="rh-logo" href="./" aria-label="RadHelper — на главную"><img src="img/brand-slice.png" alt=""><span class="rh-rad"></span><span class="rh-helper"></span></a></div></div>
   <main class="shell">
-    <section class="hero"><div class="eyebrow">Рентгенография · интерактивный шаблон</div><h1>Конструктор переломов</h1><p>Укажите область, локализацию и признаки перелома. Описание и заключение сформируются автоматически. Для нескольких повреждений добавьте ещё один перелом.</p></section>
+    <section class="hero" data-feedback-source="fractures.html · Интерфейс конструктора переломов"><div class="eyebrow">Рентгенография · интерактивный шаблон</div><h1>Конструктор переломов</h1><p>Укажите область, локализацию и признаки перелома. Описание и заключение сформируются автоматически. Для нескольких повреждений добавьте ещё один перелом.</p></section>
     <div class="layout">
-      <div class="stack" id="editor">
+      <div class="stack" id="editor" data-feedback-source="fractures.html · Интерфейс конструктора переломов">
         <section class="panel">
           <div class="panelhead"><h2>01 · Исследование</h2><span class="pill">Общие данные</span></div>
           <div class="panelbody fields">
@@ -43,18 +43,18 @@
         <section class="panel"><div class="panelbody"><div class="row between mobilewrap"><div><strong>Ограничения</strong><div class="quiet">Конструктор не оценивает снимки самостоятельно и не определяет несращение по отдельному признаку. Проверяйте формулировки перед использованием.</div></div><button class="btn" id="resetBtn" type="button">Сбросить</button></div></div></section>
       </div>
       <aside class="panel preview" aria-label="Сформированный протокол">
-        <div class="panelhead"><h2>02 · Готовый текст</h2><span class="pill">Обновляется сразу</span></div>
+        <div class="panelhead" data-feedback-source="fractures.html · Интерфейс конструктора переломов"><h2>02 · Готовый текст</h2><span class="pill">Обновляется сразу</span></div>
         <div class="panelbody">
           <div id="warnings" class="hidden alert" role="status"></div>
-          <div class="report"><div class="reporttitle"><span>Описание</span><button type="button" data-copy="description">Копировать</button></div><div id="description" class="pretext"></div></div>
-          <div class="report"><div class="reporttitle"><span>Заключение</span><button type="button" data-copy="conclusion">Копировать</button></div><div id="conclusion" class="pretext"></div></div>
-          <div class="actions"><button class="btn primary" type="button" data-copy="all">Копировать всё</button><button class="btn" type="button" data-copy="description">Только описание</button><button class="btn" type="button" data-copy="conclusion">Только заключение</button></div>
-          <div class="hr"></div><div class="quiet">Служебные подписи, кнопки и предупреждения <strong>не копируются</strong>. Результат обычный текст. Медицинские формулировки требуют проверки врачом.</div>
+          <div class="report"><div class="reporttitle" data-feedback-source="fractures.html · Интерфейс конструктора переломов"><span>Описание</span><button type="button" data-copy="description">Копировать</button></div><div id="description" class="pretext"></div></div>
+          <div class="report"><div class="reporttitle" data-feedback-source="fractures.html · Интерфейс конструктора переломов"><span>Заключение</span><button type="button" data-copy="conclusion">Копировать</button></div><div id="conclusion" class="pretext"></div></div>
+          <div class="actions" data-feedback-source="fractures.html · Интерфейс конструктора переломов"><button class="btn primary" type="button" data-copy="all">Копировать всё</button><button class="btn" type="button" data-copy="description">Только описание</button><button class="btn" type="button" data-copy="conclusion">Только заключение</button></div>
+          <div class="hr"></div><div class="quiet" data-feedback-source="fractures.html · Интерфейс конструктора переломов">Служебные подписи, кнопки и предупреждения <strong>не копируются</strong>. Результат обычный текст. Медицинские формулировки требуют проверки врачом.</div>
         </div>
       </aside>
     </div>
   </main>
-  <footer class="footer">Radhelper · справочный инструмент для врачей-рентгенологов, не клиническая рекомендация. Данные пациента не запрашиваются и никуда не отправляются. <a href="./">Вернуться к шаблонам</a>.</footer>
+  <footer class="footer" data-feedback-source="fractures.html · Интерфейс конструктора переломов">Radhelper · справочный инструмент для врачей-рентгенологов, не клиническая рекомендация. Данные пациента не запрашиваются и никуда не отправляются. <a href="./">Вернуться к шаблонам</a>.</footer>
   <div id="toast" class="toast hidden" role="status"></div>
   <script>
   'use strict';
@@ -262,5 +262,6 @@
   document.addEventListener('click',e=>{const b=e.target.closest('[data-copy]');if(!b)return;const r=report();const val=b.dataset.copy==='description'?r.description:b.dataset.copy==='conclusion'?r.conclusion:`${r.description}\n\nЗАКЛЮЧЕНИЕ: ${r.conclusion.replace(/\n/g,'\n')}`;copyText(val);});
   renderAll();
   </script>
+  <script src="feedback.js"></script>
 </body>
 </html>

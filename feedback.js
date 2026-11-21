@@ -1,23 +1,17 @@
-/* «Поправить»: выделил кусок шаблона или подсказки → кнопка → Яндекс Форма с уже заполненными полями.
+/* «Поправить»: выделение открывает кнопку Яндекс Формы. В форму передаётся только источник.
    Ответы формы приходят автору на почту (включается в настройках формы: «Уведомления» / «Письмо»).
 
    Настройка — только тут:
      FORM — адрес формы (forms.yandex.ru/u/…/). Пустая строка — кнопка выключена, сайт работает как раньше.
-     F    — идентификаторы вопросов формы («Показать настройки» в блоке вопроса).
-            Поле «Что не так» пользователь заполняет сам — его id здесь не нужен. */
+     SOURCE_FIELD — идентификатор вопроса «Шаблон / раздел» в настройках формы. */
 (function () {
   const FORM = "https://forms.yandex.ru/u/6af97c1c28697b37675d7d79/";
-  const F = {
-    text:  "Fragment",                                      // «Выделенный фрагмент» (длинный текст)
-    where: "Source",                                      // «Шаблон / раздел» (короткий текст), например templates/ct-brain.md · Норма
-    page:  "Page"                                       // «Страница» (короткий текст), адрес
-  };
-  const MAX = 1200;                                   // символов фрагмента: длиннее — режем, иначе ссылка не влезет
+  const SOURCE_FIELD = "Source";
 
   if (!FORM) return;
 
-  // Где можно выделять: шаблон, находка, подсказки под шаблоном, карточки разделов
-  const ZONES = "#study .tpl, #study .fx, #study .hints .body, #list details.sec .body";
+  // Кроме шаблонов и справочных карточек, отдельные страницы могут пометить свои блоки.
+  const ZONES = "#study .tpl, #study .fx, #study .hints .body, #list details.sec .body, [data-feedback-source]";
 
   const btn = document.createElement("button");
   btn.type = "button";
@@ -26,21 +20,7 @@
   btn.hidden = true;
   document.body.appendChild(btn);
 
-  let picked = null;                                  // { text, where } — запоминаем сразу: выделение может слететь при тапе
-
-  // Текст выделения с учётом полей [__]: toString() их значения теряет, а скрытые варианты {а|б} — наоборот, тащит
-  // (клон поля не помнит, что в него вбили, — поэтому перед клонированием кладём значение в data-fb)
-  function selText(range) {
-    const root = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
-    const inputs = Array.from(root.querySelectorAll("input, textarea, select"));
-    inputs.forEach(n => n.dataset.fb = n.tagName === "SELECT" ? (n.selectedOptions[0] || {}).text || "" : n.value || "[" + (n.placeholder || "__") + "]");
-    const box = document.createElement("div");
-    box.appendChild(range.cloneContents());
-    inputs.forEach(n => delete n.dataset.fb);
-    box.querySelectorAll("[hidden]").forEach(n => n.remove());
-    box.querySelectorAll("input, textarea, select").forEach(n => n.replaceWith(n.dataset.fb || ""));
-    return box.textContent.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
-  }
+  let source = null;                                  // сохраняем источник до нажатия, пока видно выделение
 
   // Откуда кусок: файл шаблона и вкладка — или файл карточки
   function whereOf(node) {
@@ -48,17 +28,16 @@
     const study = el.closest("#study");
     if (study) {
       const tab = study.querySelector('.tab[aria-selected="true"]');
-      const h = study.querySelector("h2");
-      return [study.dataset.src || (h ? h.firstChild.textContent : "шаблон"),
+      return [study.dataset.src,
               tab ? tab.textContent : "",
               el.closest(".hints") ? "подсказка: " + (el.closest("details")?.querySelector("summary .t")?.textContent || "") : ""]
         .filter(Boolean).join(" · ");
     }
     const sec = el.closest("details.sec");
-    return sec && sec.id ? "ru/" + sec.id + ".md" : "?";
+    return sec && sec.id ? "ru/" + sec.id + ".md" : null;
   }
 
-  function hide() { btn.hidden = true; picked = null; }
+  function hide() { btn.hidden = true; source = null; }
 
   function update() {
     const sel = window.getSelection();
@@ -68,9 +47,8 @@
     const za = (a.nodeType === 1 ? a : a.parentElement).closest(ZONES);
     const zb = (b.nodeType === 1 ? b : b.parentElement).closest(ZONES);
     if (!za || za !== zb) return hide();             // выделили мимо или через два блока — молчим
-    const text = selText(range);
-    if (text.length < 2) return hide();
-    picked = { text, where: whereOf(range.commonAncestorContainer) };
+    source = za.dataset.feedbackSource || whereOf(range.commonAncestorContainer);
+    if (!source) return hide();
 
     // Кнопка — под выделением: сверху на телефоне висит системное меню «Копировать / Выделить всё»
     const r = range.getBoundingClientRect();
@@ -93,14 +71,10 @@
   btn.addEventListener("mousedown", e => e.preventDefault());
 
   btn.addEventListener("click", () => {
-    if (!picked) return;
+    if (!source) return;
     const url = new URL(FORM);
-    let text = picked.text;
-    if (text.length > MAX) text = text.slice(0, MAX) + " […]";
-    if (F.text) url.searchParams.set(F.text, text);
-    if (F.where) url.searchParams.set(F.where, picked.where);
-    if (F.page) url.searchParams.set(F.page, location.href);
-    window.open(url.toString(), "_blank", "noopener");
+    url.searchParams.set(SOURCE_FIELD, source);
+    window.open(url.toString(), "_blank", "noopener,noreferrer");
     window.getSelection().removeAllRanges();
     hide();
   });

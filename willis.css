@@ -1,0 +1,34 @@
+.willis-panel {
+  margin: .8rem 0;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: .65rem;
+  background: var(--card);
+  font: 1rem/1.45 system-ui, sans-serif;
+  white-space: normal;
+}
+.willis-panel h3, .willis-panel p { margin: 0 0 .45rem; }
+.willis-panel h3 { font-size: 1.05rem; }
+.willis-panel p, .willis-controls { color: var(--muted); font-size: .9rem; }
+.willis-layout { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.willis-panel svg { width: 21rem; max-width: 100%; height: auto; display: block; }
+.willis-panel svg text { text-anchor: middle; fill: var(--ink); font: 14px system-ui, sans-serif; }
+.willis-panel svg .willis-side { fill: var(--muted); }
+.willis-context, .willis-vessel, .willis-hit { fill: none; stroke-linecap: round; }
+.willis-context { stroke: var(--muted); stroke-width: 5; opacity: .6; }
+.willis-hit { stroke: transparent; stroke-width: 23; }
+.willis-vessel { stroke: var(--accent); stroke-width: 7; pointer-events: none; }
+.willis-ica { fill: var(--ink); pointer-events: none; }
+.willis-segment { cursor: pointer; }
+.willis-segment[aria-pressed="false"] .willis-vessel { visibility: hidden; }
+.willis-segment[aria-pressed="false"] text { fill: var(--muted); text-decoration: line-through; }
+.willis-segment:focus-visible text, .willis-segment:hover text { font-weight: bold; }
+.willis-actions { display: flex; gap: .5rem; }
+.willis-panel button, .willis-panel select { font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: .4rem; padding: .4rem .65rem; }
+.willis-panel button { cursor: pointer; }
+.willis-controls { flex: 1 1 13rem; min-width: 0; }
+.willis-controls summary { cursor: pointer; color: var(--accent); }
+.willis-controls label, .willis-controls select { display: block; margin: .35rem 0; }
+.willis-controls select { width: 100%; max-width: 100%; }
+.willis-controls fieldset { border: 0; padding: 0; margin: .7rem 0; }
+.willis-panel .willis-summary { color: var(--ink); margin-top: .75rem; }

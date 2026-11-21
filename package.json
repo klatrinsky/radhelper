@@ -1,8 +1,10 @@
 {
   "name": "radhelper",
-  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test": "node --test tests/*.test.cjs"
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

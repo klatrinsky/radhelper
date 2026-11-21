@@ -254,11 +254,6 @@
     bottom: calc(20px + env(safe-area-inset-bottom)); background: var(--ink); color: var(--bg);
     padding: 10px 16px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; }
   .toast[hidden] { display: none; }
-  /* «Поправить»: всплывает под выделенным текстом (feedback.js) */
-  .fb-btn { position: fixed; z-index: 30; height: 36px; padding: 0 14px; border: 0; border-radius: 18px;
-    background: var(--ink); color: var(--bg); font: inherit; font-size: 0.85rem; font-weight: 600;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, .25); cursor: pointer; }
-  .fb-btn[hidden] { display: none; }
 
   .empty { text-align: center; color: var(--muted); padding: 24px 0; }
   footer { color: var(--muted); font-size: 0.8rem; padding: 16px 0 max(32px, env(safe-area-inset-bottom)); }
@@ -273,7 +268,7 @@
   body.home #q:focus { outline: none; border-color: var(--accent); }
   body.home main { display: none; }
 
-  /* «Что нового» под строкой поиска — только на пустой главной. Текст — в news.md */
+  /* Новости на главной: под поиском у врача, под оглавлением у лаборанта */
   .news { display: none; }
   body.home .news:not([hidden]) { display: block; max-width: 620px; margin: 18px auto 0; padding: 0 16px;
     color: var(--muted); font-size: 0.95rem; line-height: 1.45; }
@@ -281,6 +276,7 @@
   .news ul { margin: 0; padding-left: 1.1em; }
   .news li { margin: 3px 0; }
   .news ul + h2 { margin-top: 14px; }
+  .news a { color: var(--accent); }
   .news .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); }
 
   /* Главная лаборанта: кнопки разделов под строкой поиска (на главной врача их нет) */
@@ -343,7 +339,7 @@
   /* «Частые вопросы о катетерах»: вопрос — отдельной строкой и другим цветом, чтобы не сливался с ответом */
   #catheter-faq .body p > b:first-child { display: block; color: var(--accent); margin-bottom: 2px; }
 
-  /* Архив новостей: кнопка в подвале открывает окно со всеми выпусками из news.md */
+  /* Архив новостей: кнопка в подвале открывает окно со всеми выпусками */
   .linkbtn { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
   .linkbtn[hidden] { display: none; }
   .news-arch { width: min(620px, calc(100vw - 24px)); max-height: min(80vh, 80dvh); padding: 0;
@@ -403,8 +399,8 @@ if (window.RH_LAB) document.body.classList.add("lab");
     <input id="q" type="search" placeholder="Что описываем?" autofocus autocomplete="off" enterkeyhint="search" aria-label="Поиск">
   </div>
   <div class="examples" id="examples" hidden></div>
-  <div class="news" id="news" hidden></div>
   <nav class="lablinks" id="labLinks" aria-label="Разделы" hidden></nav>
+  <div class="news" id="news" hidden></div>
 </header>
 
 <main class="wrap">
@@ -437,6 +433,9 @@ if (window.RH_LAB) {
 <div class="toast" id="toast" hidden></div>
 <button type="button" class="sos-fab" id="sosFab" aria-label="Экстренные ситуации" title="Анафилаксия, экстравазация">SOS</button>
 <script src="findings.js"></script>
+<link rel="stylesheet" href="willis.css">
+<script src="willis-classification.js"></script>
+<script src="willis.js"></script>
 <script src="widgets.js"></script>
 <script src="feedback.js"></script>
 
@@ -623,6 +622,15 @@ if (window.RH_LAB) {
       }));
       // SOS в углу на всех страницах, кроме главной: сразу все экстренные разделы
       document.getElementById("sosFab").addEventListener("click", () => only(sos.map(s => s.id)));
+
+      // Прямые ссылки из новостей и переходы по истории внутри входа лаборанта.
+      const openLinkedSection = () => {
+        const id = location.hash.slice(1);
+        if (secs.some(s => s.id === id)) only([id]);
+        else if (!id) document.getElementById("homeBtn").click();
+      };
+      if (location.hash) openLinkedSection();
+      window.addEventListener("hashchange", openLinkedSection);
     }
 
     // «Распечатать на стену»: печатается только этот раздел, раскрытым и крупно
@@ -643,7 +651,7 @@ if (window.RH_LAB) {
     secs.forEach(s => s.addEventListener("toggle", () => {
       if (s.open && !q.value) history.replaceState(null, "", "#" + s.id);
     }));
-    const target = location.hash && document.getElementById(location.hash.slice(1));
+    const target = !window.RH_LAB && location.hash && document.getElementById(location.hash.slice(1));
     if (target && target.tagName === "DETAILS") { target.open = true; target.scrollIntoView(); }
   }
 
@@ -757,7 +765,7 @@ if (window.RH_LAB) {
         current = s;
         const v = s.variants[vi];
         studyEl.hidden = false;
-        studyEl.dataset.src = TDIR + v.f;                // для feedback.js: из какого файла шаблон
+        studyEl.dataset.src = (v.kind === "tool" ? "tools/" : TDIR) + v.f;
         studyEl.innerHTML =
           (found.length > 1 ? '<div class="picks">' + found.map((x, i) =>
             '<button type="button" class="pick" data-i="' + i + '" aria-pressed="' + (x === s) + '">' + esc(x.title) + "</button>").join("") + "</div>" : "") +
@@ -893,6 +901,10 @@ if (window.RH_LAB) {
       f: (a, b, c) => 0.523 * a * b * c / 1000 },
     "КТИ":    { inputs: ["Сердце", "Грудь"], digits: 0,               // кардиоторакальный индекс, %
       f: (heart, chest) => heart / chest * 100 },
+    "ВЫВОД АОРТА": { inputs: ["Диаметр восходящей аорты"], uses: ["аорта"], raw: true, optional: true,
+      text: ([d], tg) => tg("аорта") === 1 && Number.isFinite(d) && d > 40 ? "Расширение восходящей аорты." : "" },
+    "ВЫВОД ЛЁГОЧНЫЙ СТВОЛ": { inputs: ["Диаметр лёгочного ствола"], uses: ["лёгочный ствол"], raw: true, optional: true,
+      text: ([d], tg) => tg("лёгочный ствол") === 1 && Number.isFinite(d) && d > 30 ? "Косвенные признаки лёгочной гипертензии." : "" },
     "ЭВАНС":  { inputs: ["Рога", "Череп"], digits: 2,                 // индекс Эванса: передние рога / внутренний поперечник черепа
       f: (horns, skull) => horns / skull,
       // сам ставит переключатель {#желудочки: норма|расширены}: > 0,3 — второй вариант
@@ -975,18 +987,17 @@ if (window.RH_LAB) {
      Критерий: женщина после менопаузы или мужчина ≥ 50 лет — T; женщина до менопаузы или мужчина < 50 — Z.
      Диагноз — по худшему значению среди видимых областей (Total Body не участвует):
        T ≥ −1,0 — норма; −2,5 < T < −1,0 — остеопения; T ≤ −2,5 — остеопороз; Z > −2,0 — в пределах ожидаемых, Z ≤ −2,0 — ниже.
-     Динамика по умолчанию — разница T% или Z% (в зависимости от категории пациента) с прошлым исследованием;
-     значима, если ≥ заданного порога области. */
-  const DXA = [   // область: поля, переключатель «есть / нет области», порог значимой динамики (LSC), как назвать в тексте
-    { k: "позв",    show: "поясничный отдел", lsc: 3, where: tg => "в поясничном отделе позвоночника" },
-    { k: "шейка 1", show: "шейка бедра",      lsc: 4, where: tg => "в шейке " + (tg("бедро") ? "правой" : "левой") + " бедренной кости" },
-    { k: "шейка 2", show: "контралатеральная шейка", hiddenFirst: true, lsc: 4,
+     Сравнение с прошлым исследованием: разница T% или Z% в процентных пунктах либо изменение МПК в процентах. */
+  const DXA = [   // область: поля, переключатель «есть / нет области», как назвать в тексте
+    { k: "позв",    show: "поясничный отдел", where: tg => "в поясничном отделе позвоночника" },
+    { k: "шейка 1", show: "шейка бедра",      where: tg => "в шейке " + (tg("бедро") ? "правой" : "левой") + " бедренной кости" },
+    { k: "шейка 2", show: "контралатеральная шейка", hiddenFirst: true,
       where: tg => "в шейке " + (tg("бедро") ? "левой" : "правой") + " бедренной кости" },
-    { k: "предпл",  show: "предплечье", hiddenFirst: true, lsc: 3, where: tg => "в области " + (tg("рука") ? "правого" : "левого") + " предплечья" }
+    { k: "предпл",  show: "предплечье", hiddenFirst: true, where: tg => "в области " + (tg("рука") ? "правого" : "левого") + " предплечья" }
   ];
   const DXA_IN = ["Возраст"].concat(DXA.flatMap(r => ["T " + r.k, "T% " + r.k, "Z " + r.k, "Z% " + r.k, "было " + r.k, "BMD " + r.k, "BMD было " + r.k]));
   const DXA_USES = ["пол", "менопауза", "TBS", "бедро", "рука", "режим динамики", "контроль"].concat(DXA.map(r => r.show));
-  const PH = { "Возраст": "__", "FRAX осн": "%", "L1 HU": "HU" };                    // подсказка в пустом поле вместо имени
+  const PH = { "Возраст": "__", "FRAX осн": "%", "L1 HU": "HU", "Диаметр восходящей аорты": "__", "Диаметр лёгочного ствола": "__" };                    // подсказка в пустом поле вместо имени
   PH_MM.forEach(n => { PH[n] = "мм"; });
   DXA.forEach(r => Object.assign(PH, { ["T " + r.k]: "T", ["T% " + r.k]: "%", ["Z " + r.k]: "Z", ["Z% " + r.k]: "%", ["было " + r.k]: "%", ["BMD " + r.k]: "г/см²", ["BMD было " + r.k]: "г/см²" }));
   const r1 = x => Math.round(x * 10) / 10;                         // сравниваем с порогами по одному знаку, как в протоколе
@@ -997,11 +1008,8 @@ if (window.RH_LAB) {
     const regions = DXA.filter(r => tg(r.show) === (r.hiddenFirst ? 1 : 0));   // видимые области
     return { crit, age, regions, get };
   }
-  const pct = x => fmt(Math.abs(x), 1).replace(/,0$/, "") + "%";
-  function dxaChanges(v, tg) {
-    const { crit, regions, get } = dxa(v, tg);
-    if (!crit) return null;
-    const bmdMode = tg("режим динамики") === 1;
+  function dxaChanges({ crit, regions, get }, tg, bmdMode) {
+    if (!bmdMode && !crit) return [];
     const res = [];
     regions.forEach(r => {
       let d;
@@ -1014,7 +1022,7 @@ if (window.RH_LAB) {
         if (!Number.isFinite(now) || !Number.isFinite(was)) return;
         d = now - was;
       }
-      res.push({ d, sig: Math.abs(d) >= r.lsc, where: r.where(tg), pct: pct(d), bmdMode });
+      if (Number.isFinite(d)) res.push({ d, where: r.where(tg) });
     });
     return res;
   }
@@ -1025,11 +1033,19 @@ if (window.RH_LAB) {
     "КРИТЕРИЙ": { inputs: DXA_IN, raw: true, text: (v, tg) => {
       const c = dxa(v, tg).crit;
       return c ? c + "-критерий" : "введите возраст"; } },
-    // «положительная динамика в поясничном отделе позвоночника в виде прироста значений Z-критерия на 3,1%, отрицательная …»
     "ДИНАМИКА": { inputs: DXA_IN, raw: true, text: (v, tg) => {
-      const crit = dxa(v, tg).crit;
-      return (dxaChanges(v, tg) || []).filter(x => x.sig).map(x => (x.d > 0 ? "положительная" : "отрицательная") +
-        " динамика " + x.where + " в виде " + (x.d > 0 ? "прироста" : "снижения") + (x.bmdMode ? " МПК (BMD) на " : " значений " + crit + "-критерия на ") + x.pct).join(", ");
+      const research = dxa(v, tg);
+      const bmdMode = tg("режим динамики") === 1;
+      const changes = dxaChanges(research, tg, bmdMode);
+      if (!changes.length) return "";
+      const metric = bmdMode ? "МПК (BMD)" : research.crit + "%";
+      const unit = bmdMode ? "%" : " п. п.";
+      const amounts = changes.map(({ d, where }) => {
+        const magnitude = fmt(Math.abs(d), 1).replace(/,0$/, "");
+        const sign = magnitude === "0" ? "" : d < 0 ? "−" : "+";
+        return where + " " + sign + magnitude + unit;
+      }).join(", ");
+      return metric + " " + amounts + (bmdMode ? "." : "");
     } },
     "TOTAL BMD": { inputs: ["BMC total", "Area total"], digits: 3,
       f: (bmc, area) => bmc > 0 && area > 0 ? bmc / area : NaN },
@@ -1041,7 +1057,7 @@ if (window.RH_LAB) {
     "ЧЕРЕЗ 1 ГОД":  { inputs: [], raw: true, text: inYears(1) },
     "ЧЕРЕЗ 2 ГОДА": { inputs: [], raw: true, text: inYears(2) },
     // невидимый: ставит {#МПК: не введено|норма|остеопения|остеопороз|в пределах ожидаемых|ниже ожидаемых},
-    // {#контроль через: 1 год|2 года}, {#консультация: не введено|гериатр|эндокринолог|нет}, {#динамика: …}
+    // {#контроль через: 1 год|2 года}, {#консультация: не введено|гериатр|эндокринолог|нет}
     "ДЕНСИТОМЕТРИЯ": { inputs: DXA_IN, hidden: true, uses: DXA_USES, set: (v, tg) => {
       const { crit, age, regions, get } = dxa(v, tg);
       const out = { "консультация": !isFinite(age) ? 0 : age >= 75 ? 1 : 2 };
@@ -1052,12 +1068,6 @@ if (window.RH_LAB) {
         const dx = crit === "T" ? (w >= -1 ? 1 : w > -2.5 ? 2 : 3) : (w > -2 ? 4 : 5);
         Object.assign(out, { "МПК": dx, "контроль через": dx === 1 || dx === 4 ? 1 : 0 });
         if (dx === 1 || dx === 4) out["консультация"] = 3;          // норма — консультацию не пишем
-      }
-      const ch = dxaChanges(v, tg);                                 // {#динамика: не введено|нет|+|−|разнонаправленная}
-      if (!ch || !ch.length) out["динамика"] = 0;
-      else {
-        const up = ch.some(x => x.sig && x.d > 0), down = ch.some(x => x.sig && x.d < 0);
-        out["динамика"] = up && down ? 4 : up ? 2 : down ? 3 : 1;
       }
       return out;
     } },
@@ -1113,6 +1123,7 @@ if (window.RH_LAB) {
   function buildTemplate(text, el) {
     el.innerHTML = "";
     const parts = [], calcs = [], named = {}, linked = {}, toggles = {}, lists = [], lineEls = [];
+    const willisFields = new Map();
     const PH_OF = new Map();                    // «+ имя» пустого варианта → { group, inst }
     let missing = [];                           // незаполненное в копируемом тексте: [{ label, el }] — собирается при каждом text()
     // В DXA предыдущие проценты храним отдельно для T и Z. При смене пациента не подменяем один критерий другим.
@@ -1161,7 +1172,7 @@ if (window.RH_LAB) {
         const vals = def.inputs.map(n => num(named[n] ? named[n][0].value : NaN));
         if (def.raw) {                                             // текст из любых значений (пустые — NaN) и переключателей
           c.value = def.text(vals, tg) || "";
-          c.el.textContent = c.value || "__";
+          c.el.textContent = c.value || (def.optional ? "" : "__");
           return;
         }
         if (def.text) {                                            // калькулятор, который пишет текст, а не число
@@ -1186,6 +1197,7 @@ if (window.RH_LAB) {
           if (g) { g.i = i; g.show(); }
         });
       });
+      if (calcs.some(c => CALC[c.name].optional)) tidy();
     }
     // переключатели, от которых зависят невидимые калькуляторы (uses), при нажатии пересчитывают
     const USED = new Set(Object.values(CALC).flatMap(d => (d.uses || []).map(n => "#" + lower(n))));
@@ -1427,6 +1439,13 @@ if (window.RH_LAB) {
           span.className = "hid"; span.title = "Не копируется";
           parse(hid, span, [], depth);
           target.append(span);
+        } else if (calc === "ВИЛЛИЗИЕВ ОПИСАНИЕ" || calc === "ВИЛЛИЗИЕВ ЗАКЛЮЧЕНИЕ") {
+          const span = document.createElement("span");
+          const key = calc.endsWith("ОПИСАНИЕ") ? "description" : "conclusion";
+          willisFields.set(key, span);
+          if (key === "conclusion") span.setAttribute("aria-live", "polite");
+          target.append(span);
+          out.push(() => span.textContent || EMPTY);
         } else if (calc !== undefined && /^перечень\s*:/i.test(calc)) {  // {{ПЕРЕЧЕНЬ: имена | № варианта | одно | несколько}}
           list(calc.replace(/^перечень\s*:/i, ""), target, out);
         } else if (calc !== undefined && /^все\s*:/i.test(calc)) {       // {{ВСЕ: имена | № варианта | текст}}
@@ -1444,6 +1463,7 @@ if (window.RH_LAB) {
             calcs.push(c);
             out.push(() => {
               if (c.value) return c.value;
+              if (CALC[key].optional) return EMPTY;
               // подсветить пустое поле, из которого считается (оно может быть и в жёлтой строке «> …»)
               const n = CALC[key].inputs.find(n => named[n] && named[n].some(i => !i.value.trim()));
               missing.push(n ? { label: n, el: named[n].find(i => !i.value.trim()) } : { label: key, el: span });
@@ -1466,7 +1486,14 @@ if (window.RH_LAB) {
     const lines = text.split("\n");
     lines.forEach((line, i) => {
       const ctl = line.match(/^>\s?(.*)$/);
-      if (ctl) {
+      if (line.trim() === "> {{ВИЛЛИЗИЕВ КРУГ}}") {
+        const panel = document.createElement("section");
+        el.append(panel);
+        window.createWillisDiagram(panel, result => {
+          for (const [key, span] of willisFields) span.textContent = result ? result[key] : "";
+          tidy();
+        });
+      } else if (ctl) {
         const box = document.createElement("div");
         box.className = "ctl";
         parse(ctl[1], box, [], 0);
@@ -1521,10 +1548,10 @@ if (window.RH_LAB) {
 })();
 </script>
 <script>
-/* «Что нового»: читает news.md. Строка «# …» — заголовок, строки «- …» — пункты,
-   [[слово]] — кликабельно: подставляет слово в поиск; [текст](?lab) или [текст](https://…) — ссылка.
+/* «Что нового»: news.md у врача, news_lab.md у лаборанта. «# …» — заголовок, «- …» — пункт.
+   [[слово]] подставляет запрос в поиск врача; [текст](?lab#раздел) открывает раздел у лаборанта.
    На главной — три верхних выпуска. Если выпусков больше, в подвале появляется «Архив новостей»:
-   окно со всеми выпусками файла. Старые новости из news.md не удаляйте — они уходят в архив сами. */
+   окно со всеми выпусками выбранного файла. */
 (function () {
   const HOME = 3;
   const box = document.getElementById("news");
@@ -1552,7 +1579,7 @@ if (window.RH_LAB) {
   }
   const close = () => { if (dlg.open) dlg.close(); };
 
-  fetch(window.RH_LAB ? "news-lab.md" : "news.md", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
+  fetch(window.RH_LAB ? "news_lab.md" : "news.md", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
     let blocks = [];
     t.replace(/\r/g, "").split("\n").forEach(l => {
       l = l.trim();
@@ -1572,6 +1599,9 @@ if (window.RH_LAB) {
     if (blocks.length <= HOME || !dlg || !btn) return;   // архивировать пока нечего
     all.innerHTML = html(blocks);
     tryHandlers(all, close);
+    all.addEventListener("click", e => {
+      if (e.target.closest('a[href^="?lab#"]')) close();
+    });
     btn.hidden = false;
     btn.addEventListener("click", () => {
       if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
