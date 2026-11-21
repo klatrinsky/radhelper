@@ -1,7 +1,6 @@
 'use strict';
 
-// Проверки актуального шаблона DXA (изменения от 19.11.2026).
-// Запуск из корня репозитория: node --test tests/*.test.cjs
+// Проверки шаблона DXA. Запуск из корня репозитория: npm test
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -24,14 +23,14 @@ function loadDxa() {
     fmt: (x, digits) => x.toFixed(digits).replace('.', ','),
   };
   vm.runInNewContext(
-    index.slice(start, end) + '\n globalThis.TEST_DXA = { DXA_IN, dxa, dxaChanges, CALC };',
+    index.slice(start, end) + '\n globalThis.TEST_DXA = { DXA_IN, dxa, CALC };',
     sandbox,
     { filename: 'index.html:DXA' },
   );
   return sandbox.TEST_DXA;
 }
 
-const { DXA_IN, dxa, dxaChanges, CALC } = loadDxa();
+const { DXA_IN, dxa, CALC } = loadDxa();
 
 function inputs(fields = {}) {
   return DXA_IN.map(name => Object.hasOwn(fields, name) ? fields[name] : NaN);
@@ -58,13 +57,10 @@ test('Критерий для женщин определяется менопа
   assert.equal(dxa(inputs({ Возраст: 50 }), toggles({ пол: 1 })).crit, 'T');
 });
 
-test('Процентная динамика действительно берётся из T% или Z%, а не всегда из T%', () => {
-  const v = inputs({ Возраст: 45, 'T% позв': 91, 'Z% позв': 107, 'было позв': 90 });
-  assert.equal(dxaChanges(v, toggles())[0].d, 1);
-  assert.equal(dxaChanges(v, toggles({ менопауза: 1 }))[0].d, 17);
-  const result = CALC['ДИНАМИКА'].text(v, toggles({ менопауза: 1 }));
-  assert.match(result, /Z-критерия на 17%/);
-  assert.doesNotMatch(result, /·/);
+test('Разность T% и Z% выводится в процентных пунктах, включая малые изменения', () => {
+  const v = inputs({ Возраст: 45, 'T% позв': 91, 'Z% позв': 88, 'было позв': 90 });
+  assert.equal(CALC['ДИНАМИКА'].text(v, toggles()), 'T% в поясничном отделе позвоночника +1 п. п.');
+  assert.equal(CALC['ДИНАМИКА'].text(v, toggles({ менопауза: 1 })), 'Z% в поясничном отделе позвоночника −2 п. п.');
 });
 
 test('Режим BMD остаётся независимым от T/Z', () => {
@@ -72,12 +68,13 @@ test('Режим BMD остаётся независимым от T/Z', () => {
     Возраст: 45, 'T% позв': 91, 'Z% позв': 107, 'было позв': 90,
     'BMD позв': 0.92, 'BMD было позв': 0.80,
   });
-  const t = dxaChanges(v, toggles({ 'режим динамики': 1 }))[0];
-  const z = dxaChanges(v, toggles({ 'режим динамики': 1, менопауза: 1 }))[0];
-  assert.ok(Math.abs(t.d - 15) < 1e-9);
-  assert.ok(Math.abs(z.d - 15) < 1e-9);
-  assert.equal(t.bmdMode, true);
-  assert.match(CALC['ДИНАМИКА'].text(v, toggles({ 'режим динамики': 1 })), /МПК \(BMD\) на 15%/);
+  const result = 'МПК (BMD) в поясничном отделе позвоночника +15%.';
+  assert.equal(CALC['ДИНАМИКА'].text(v, toggles({ 'режим динамики': 1 })), result);
+  assert.equal(CALC['ДИНАМИКА'].text(v, toggles({ 'режим динамики': 1, менопауза: 1 })), result);
+  const withoutAge = inputs({ 'BMD позв': 0.92, 'BMD было позв': 0.80 });
+  assert.equal(CALC['ДИНАМИКА'].text(withoutAge, toggles({ 'режим динамики': 1, пол: 1 })), result);
+  const zeroBaseline = inputs({ 'BMD позв': 0.92, 'BMD было позв': 0 });
+  assert.equal(CALC['ДИНАМИКА'].text(zeroBaseline, toggles({ 'режим динамики': 1 })), '');
 });
 
 test('Служебный переключатель не копируется; контроль расположен первой строкой заключения', () => {
@@ -102,13 +99,16 @@ test('При смене критерия ранее введённые T/Z пр�
   assert.match(index, /dxaPrevious\[crit\]\[r\.k\]/);
 });
 
-test('Символ процента присутствует в тексте динамики, разделитель «·» не попадает в копию', () => {
-  const v = inputs({ Возраст: 70, 'T% позв': 96.5, 'было позв': 92.0 });
+test('Сравнение включает нулевую разность и только видимые области с парой значений', () => {
+  const v = inputs({
+    Возраст: 70, 'T% позв': 96.5, 'было позв': 92, 'T% шейка 1': 88, 'было шейка 1': 88,
+    'T% шейка 2': 83, 'T% предпл': 79, 'было предпл': 82,
+  });
   const result = CALC['ДИНАМИКА'].text(v, toggles());
-  assert.match(result, /4,5%/);
-  assert.doesNotMatch(result, /·/);
+  assert.equal(result, 'T% в поясничном отделе позвоночника +4,5 п. п., в шейке левой бедренной кости 0 п. п.');
+  assert.equal(CALC['ДИНАМИКА'].text(inputs({ 'T% позв': 96.5 }), toggles()), '');
   assert.match(conclusion, /\{\{ДИНАМИКА\}\}/);
-  assert.doesNotMatch(conclusion, /·/);
+  assert.doesNotMatch(conclusion, /значим|разнонаправлен|·/);
 });
 
 test('TBS указан в описании у всех, а в заключении интерпретируется по возрасту и менопаузе', () => {
