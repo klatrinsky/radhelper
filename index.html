@@ -145,8 +145,10 @@
   /* Шаблоны заключений */
   .study { margin: 14px 0 6px; display: flex; flex-direction: column; gap: 10px; }
   .study[hidden] { display: none; }
+  body.protocol-view #list, body.protocol-view #note { display: none; }
+  .study-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
   .picks { display: flex; flex-wrap: wrap; gap: 6px; }
-  .pick { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+  .pick, .share-protocol { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card);
     color: var(--ink); font-size: 0.88rem; cursor: pointer; text-align: left; }
   .pick[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
   .app-entry { padding: 14px; display: grid; gap: 12px; }
@@ -380,11 +382,13 @@
 
 
 <script>
-if (!location.hash) document.body.classList.add("home");
 // Вход для лаборантов: адрес с ?lab (короткий вход /lab/ перекидывает сюда же).
 // Свой заголовок и подсказка в поле, только разделы с «Для: лаборант» или «Для: оба», без шаблонов заключений.
 window.RH_LAB = /(^|[?&])lab(=|&|$)/i.test(location.search.slice(1));
 if (window.RH_LAB) document.body.classList.add("lab");
+const hasProtocol = !window.RH_LAB && new URLSearchParams(location.search).has("protocol");
+if (hasProtocol) document.body.classList.add("protocol-view");
+else if (!location.hash) document.body.classList.add("home");
 </script>
 
 <header class="top">
@@ -428,6 +432,8 @@ if (window.RH_LAB) {
   document.querySelector("footer p").textContent = "Справочный материал для рентгенолаборантов, не клиническая рекомендация. Решения о введении контраста принимает врач.";
   const side = document.getElementById("sideLink");
   side.href = "./"; side.textContent = "Помощник рентгенолога →";
+} else if (hasProtocol) {
+  document.getElementById("q").removeAttribute("autofocus");
 }
 </script>
 <div class="toast" id="toast" hidden></div>
@@ -532,6 +538,14 @@ if (window.RH_LAB) {
     return out;
   }
 
+  q.addEventListener("input", () => {
+    if (!document.body.classList.contains("protocol-view")) return;
+    document.body.classList.remove("protocol-view");
+    const url = new URL(location.href);
+    url.searchParams.delete("protocol");
+    history.replaceState(null, "", url);
+  });
+
   /* ---------- Загрузка ---------- */
   const get = f => fetch(DIR + f, { cache: "no-cache" }).then(r => {
     if (!r.ok) throw new Error(r.status);
@@ -573,6 +587,7 @@ if (window.RH_LAB) {
     if (!window.RH_LAB) templates(parsed);   // шаблоны заключений лаборанту не нужны
   }).catch(() => {
     listEl.innerHTML = '<p class="err">Не удалось прочитать ru/order.txt.</p>';
+    if (document.body.classList.contains("protocol-view")) templates({});
   });
 
   /* ---------- Поиск, «раскрыть всё», ссылки на раздел ---------- */
@@ -652,7 +667,7 @@ if (window.RH_LAB) {
       if (s.open && !q.value) history.replaceState(null, "", "#" + s.id);
     }));
     const target = !window.RH_LAB && location.hash && document.getElementById(location.hash.slice(1));
-    if (target && target.tagName === "DETAILS") { target.open = true; target.scrollIntoView(); }
+    if (!document.body.classList.contains("protocol-view") && target && target.tagName === "DETAILS") { target.open = true; target.scrollIntoView(); }
   }
 
   /* ---------- Шаблоны заключений ---------- */
@@ -724,6 +739,14 @@ if (window.RH_LAB) {
     return s;
   }
 
+  const protocolId = v => v.f.replace(/\.md$/i, "");
+  function protocolUrl(v) {
+    if (v.kind === "page") return new URL(v.page, location.href);
+    const url = new URL(location.pathname, location.origin);
+    url.searchParams.set("protocol", protocolId(v));
+    return url;
+  }
+
   function templates(sections) {
     const readList = (dir, read) => fetch(dir + "order.txt", { cache: "no-cache" })
       .then(r => r.ok ? r.text() : "").then(txt => {
@@ -734,7 +757,6 @@ if (window.RH_LAB) {
     Promise.all([readList(TDIR, readTemplate), readList("tools/", readTool)]).then(([tl, fl]) => {
       const list = tl.concat(fl);
       const variants = list.filter(Boolean);
-      if (!variants.length) return;
       const studies = [];
       variants.forEach(v => {
         let s = studies.find(x => x.title === v.study);
@@ -765,11 +787,17 @@ if (window.RH_LAB) {
         current = s;
         const v = s.variants[vi];
         studyEl.hidden = false;
+        if (document.body.classList.contains("protocol-view") && v.kind === "template") {
+          const url = new URL(location.href);
+          url.searchParams.set("protocol", protocolId(v));
+          history.replaceState(null, "", url);
+        }
         studyEl.dataset.src = (v.kind === "tool" ? "tools/" : TDIR) + v.f;
         studyEl.innerHTML =
           (found.length > 1 ? '<div class="picks">' + found.map((x, i) =>
             '<button type="button" class="pick" data-i="' + i + '" aria-pressed="' + (x === s) + '">' + esc(x.title) + "</button>").join("") + "</div>" : "") +
-          "<h2>" + esc(s.title) + (s.modality ? "<small>" + esc(s.modality) + "</small>" : "") + "</h2>" +
+          '<div class="study-heading"><h2>' + esc(s.title) + (s.modality ? "<small>" + esc(s.modality) + "</small>" : "") + "</h2>" +
+          (v.kind === "tool" ? "" : '<button type="button" class="share-protocol">Скопировать ссылку</button>') + "</div>" +
           (s.variants.length > 1 ? '<div class="tabs" role="tablist">' + s.variants.map((x, i) =>
             '<button type="button" class="tab" role="tab" data-v="' + i + '" aria-selected="' + (i === vi) + '">' + esc(x.variant) + "</button>").join("") + "</div>" : "") +
           (v.kind === "tool"
@@ -783,6 +811,8 @@ if (window.RH_LAB) {
               '<span class="btns"><button type="button" class="reset">Сбросить</button>' +
               '<button type="button" class="copy">Скопировать</button></span></div><div class="tpl"></div></div>') +
           (v.hints.length ? '<div class="hints-h">Подсказки</div><div class="hints"></div>' : "");
+        const share = studyEl.querySelector(".share-protocol");
+        if (share) share.onclick = () => copy(protocolUrl(v).href);
         if (v.kind === "tool") window.RH_FINDINGS.render(v.tool, studyEl.querySelector(".fx"));
         let tpl = null;
         const slot = studyEl.querySelector(".tpl");
@@ -862,6 +892,17 @@ if (window.RH_LAB) {
         if (found.length) none.hidden = true;
       });
       if (q.value) q.dispatchEvent(new Event("input"));
+      else if (document.body.classList.contains("protocol-view")) {
+        const id = new URLSearchParams(location.search).get("protocol");
+        const study = studies.find(s => s.variants.some(v => v.kind !== "tool" && protocolId(v) === id));
+        if (study) {
+          const vi = study.variants.findIndex(v => v.kind !== "tool" && protocolId(v) === id);
+          render([study], study, vi);
+        } else {
+          studyEl.innerHTML = '<p class="empty" role="status">Шаблон по этой ссылке не найден. Воспользуйтесь поиском.</p>';
+          studyEl.hidden = false;
+        }
+      }
     }).catch(() => { /* нет папки templates — сайт работает как раньше */ });
   }
   const get_t = f => fetch(TDIR + f, { cache: "no-cache" }).then(r => {
@@ -1635,7 +1676,7 @@ if (window.RH_LAB) {
     if (fine && !window.RH_LAB) q.focus();
   }
   document.getElementById("homeBtn").addEventListener("click", home);
-  q.addEventListener("keydown", e => { if (e.key === "Escape" && q.value) { e.preventDefault(); home(); } });
+  q.addEventListener("keydown", e => { if (e.key === "Escape" && (q.value || document.body.classList.contains("protocol-view"))) { e.preventDefault(); home(); } });
 
   if (window.RH_LAB || !ex || location.protocol === "file:") return;          // у лаборанта на главной кнопки разделов
   const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");

@@ -22,13 +22,15 @@ function diskFetch(url) {
 }
 
 /* lab: true — вход лаборанта (/?lab). Возвращает window, когда всё прочитано и отрисовано. */
-async function openSite({ lab = false } = {}) {
+async function openSite({ lab = false, query = "" } = {}) {
+  const url = new URL(BASE + query);
+  if (lab) url.searchParams.set("lab", "");
   const errors = [];
   const vc = new VirtualConsole();
   vc.on("jsdomError", e => errors.push(e.message));
   vc.on("error", e => errors.push(String(e)));
   const dom = new JSDOM(inlineScripts(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")), {
-    url: BASE + (lab ? "?lab" : ""),
+    url: url.href,
     runScripts: "dangerously",
     pretendToBeVisual: true,
     virtualConsole: vc,
