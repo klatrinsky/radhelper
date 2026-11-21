@@ -115,16 +115,11 @@ test("DXA: консультация и срок контроля", () => {
   assert.equal(s["контроль через"], 1);                              // 2 года
 });
 
-test("DXA: динамика значима от LSC (позвоночник 3%, шейка 4%)", () => {
-  let r = dxa({ "Возраст": 68, "T% позв": 83.5, "было позв": 80 }, WOMAN_POST);
-  assert.equal(r.set["динамика"], 2);
-  assert.equal(r.dyn, "положительная динамика в поясничном отделе позвоночника в виде прироста значений T-критерия на 3,5%");
-  r = dxa({ "Возраст": 68, "T% позв": 82.9, "было позв": 80 }, WOMAN_POST);
-  assert.equal(r.set["динамика"], 1);                                // 2,9% — не значимо
-  r = dxa({ "Возраст": 68, "T% шейка 1": 76.5, "было шейка 1": 80 }, WOMAN_POST);
-  assert.equal(r.set["динамика"], 1);                                // −3,5% по шейке < 4%
-  r = dxa({ "Возраст": 68, "T% позв": 84, "было позв": 80, "T% шейка 1": 75, "было шейка 1": 80 }, WOMAN_POST);
-  assert.equal(r.set["динамика"], 4);                                // разнонаправленная
+test("DXA: динамика T% по каждой области в процентных пунктах", () => {
+  const fields = { "Возраст": 68, "T% позв": 82.9, "было позв": 80, "T% шейка 1": 76.5, "было шейка 1": 80 };
+  const result = dxa(fields, WOMAN_POST);
+  assert.equal(result.dyn, "T% в поясничном отделе позвоночника +2,9 п. п., в шейке левой бедренной кости −3,5 п. п.");
+  assert.equal(Object.hasOwn(result.set, "динамика"), false);
 });
 
 test("TBS: > 1,35 норма, 1,20–1,35 частичное нарушение, ≤ 1,20 полное", () => {
@@ -185,4 +180,19 @@ test("шаблон КТА БЦА: градация считается по ок�
   t.cycle("Dмин П");
   t.type("Dмин П", "2,52"); t.type("Dдист П", "5");
   assert.match(t.tpl.text(), /Умеренный стеноз устья правой ВСА — 50% по NASCET/);
+});
+
+test("шаблоны КТА БЦА: схема Виллизиева круга заполняет описание и заключение", () => {
+  for (const file of ["cta-bca.md", "cta-bca-stenosis.md"]) {
+    const { el, tpl } = template(file);
+    assert.doesNotMatch(tpl.text(), /\{\{ВИЛЛИЗИЕВ|Виллизиев круг/i, file);
+    const segment = el.querySelector('.willis-segment[aria-label="Передняя соединительная артерия"]');
+    assert.ok(segment, file);
+    segment.dispatchEvent(new W.MouseEvent("click", { bubbles: true }));
+    const [description, conclusion] = tpl.text().split("ЗАКЛЮЧЕНИЕ:");
+    assert.match(description, /Не визуализируется передняя соединительная артерия\./, file);
+    assert.match(conclusion, /Виллизиев круг частично полный по Krabbe-Hartkamp/, file);
+    el.querySelector(".willis-clear").click();
+    assert.doesNotMatch(tpl.text(), /Виллизиев круг|Не визуализируется передняя соединительная артерия/i, file);
+  }
 });
