@@ -79,11 +79,12 @@ test('Режим BMD остаётся независимым от T/Z', () => {
 
 test('Служебный переключатель не копируется; контроль расположен первой строкой заключения', () => {
   assert.match(description, /^> Тип исследования: \{#контроль: Первичное исследование\|Контрольное исследование\./m);
-  const copyableDescription = description.split('\n').filter(line => !line.startsWith('>')).join('\n');
+  const copyableDescription = description.split('\n').filter(line => !/^(?:\?[^>]+> )?>/.test(line)).join('\n');
   assert.doesNotMatch(copyableDescription, /Контрольное исследование/);
-  const previous = copyableDescription.split('\n').find(line =>
-    line.startsWith('{#контроль: |Предыдущее исследование от [#дата предыдущего исследования]'));
-  assert.ok(previous, 'Исходные данные сравнения находятся в описании контрольного исследования');
+  assert.doesNotMatch(copyableDescription, /\[было (?:позв|шейка 1|шейка 2|предпл)\]/);
+  const previous = description.split('\n').find(line =>
+    line.startsWith('?контроль=2> > [Данные предыдущего исследования] Дата: [#дата предыдущего исследования]'));
+  assert.ok(previous, 'Исходные данные сравнения находятся в сворачиваемом блоке ввода');
   assert.ok(previous.includes('% ({{КРИТЕРИЙ}})'), 'Критерий сравнения выбирается динамически');
   for (const region of ['позв', 'шейка 1', 'шейка 2', 'предпл']) {
     assert.ok(previous.includes(`[было ${region}]%`), `Нет предыдущего процента: ${region}`);

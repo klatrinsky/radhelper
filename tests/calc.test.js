@@ -171,9 +171,16 @@ test("шаблон КТА БЦА: стеноз попадает в заключ�
   t.cycle("Dмин П");                                                 // «без стенозов» → «стеноз устья …»
   t.type("Dмин П", "1,5"); t.type("Dдист П", "5"); t.type("Dлук П", "7,5");
   const out = t.tpl.text();
-  assert.match(out, /стеноз устья 70% по NASCET и 80% по ECST/);
+  assert.match(out, /стеноз устья 80% по ECST и 70% по NASCET/);
   assert.match(out, /Выраженный стеноз устья правой ВСА — 70% по NASCET \(80% по ECST\)\./);
-  assert.doesNotMatch(out, /левой ВСА/);
+  assert.match(out, /Слева:\nСтеноза устья левой ВСА нет\./);
+  t.cycle("Dмин Л");
+  t.type("Dмин Л", "3"); t.type("Dдист Л", "5"); t.type("Dлук Л", "6");
+  assert.match(t.tpl.text().split("ЗАКЛЮЧЕНИЕ:")[1],
+    /Справа:\nВыраженный стеноз[^\n]+70% по NASCET \(80% по ECST\)\.[\s\S]*Слева:\nНезначительный стеноз[^\n]+40% по NASCET \(50% по ECST\)\./);
+  t.cycle("Dмин Л");
+  assert.match(t.tpl.text().split("Слева:").at(-1), /Почти полная окклюзия левой ВСА с частичным спадением/);
+  assert.doesNotMatch(t.tpl.text().split("Слева:").at(-1), /NASCET|ECST/);
 });
 
 test("шаблон КТА БЦА: градация считается по округлённому значению (49,6% → 50% → умеренный)", () => {
@@ -189,6 +196,13 @@ test("шаблоны КТА БЦА: схема Виллизиева круга �
     assert.doesNotMatch(tpl.text(), /\{\{ВИЛЛИЗИЕВ|Виллизиев круг/i, file);
     const segment = el.querySelector('.willis-segment[aria-label="Передняя соединительная артерия"]');
     assert.ok(segment, file);
+    if (file === "cta-bca-stenosis.md") {
+      const panel = segment.closest("section");
+      assert.ok(panel.hidden);
+      [...el.querySelectorAll(".ctl .tg")].find(node =>
+        node.firstElementChild.textContent === "+ Интракраниальный сегмент").click();
+      assert.equal(panel.hidden, false);
+    }
     segment.dispatchEvent(new W.MouseEvent("click", { bubbles: true }));
     const [description, conclusion] = tpl.text().split("ЗАКЛЮЧЕНИЕ:");
     assert.match(description, /Не визуализируется передняя соединительная артерия\./, file);
@@ -196,6 +210,75 @@ test("шаблоны КТА БЦА: схема Виллизиева круга �
     el.querySelector(".willis-clear").click();
     assert.doesNotMatch(tpl.text(), /Виллизиев круг|Не визуализируется передняя соединительная артерия/i, file);
   }
+});
+
+test("DXA: свёрнутые данные сравнения участвуют в расчёте и исключены из копируемого описания", () => {
+  const t = template("dxa.md");
+  const previous = t.el.querySelector("details.ctl");
+  assert.ok(previous.hidden);
+  const control = [...t.el.querySelectorAll(".ctl .tg")].find(node =>
+    node.firstElementChild.textContent === "Первичное исследование");
+  control.click();
+  assert.equal(previous.hidden, false);
+  assert.equal(previous.open, false);
+  previous.open = true;
+  const date = previous.querySelector('input[placeholder="дд.мм.гггг"]');
+  date.value = "15.01.2026";
+  date.dispatchEvent(new W.Event("input", { bubbles: true }));
+  t.type("Возраст", "73");
+  t.type("T% позв", "96,5");
+  t.type("было позв", "92");
+  const copy = t.tpl.text();
+  const [description, conclusion] = copy.split("Заключение:");
+  assert.doesNotMatch(description, /15\.01\.2026|92%|Данные предыдущего исследования|BMD/);
+  assert.match(conclusion, /от 15\.01\.2026.*\+4,5 п\. п\./);
+  previous.open = false;
+  assert.equal(t.tpl.text(), copy);
+});
+
+test("КТА грудной аорты: форма просвета меняется только у выбранного уровня", () => {
+  const { el, tpl } = template("cta-thoracic-aorta.md");
+  const shapes = [...el.querySelectorAll("select")];
+  assert.equal(shapes.length, 9);
+  shapes[2].selectedIndex = 1;
+  shapes[2].dispatchEvent(new W.Event("change"));
+  const text = tpl.text();
+  assert.match(text, /Восходящая аорта, максимально: \[__\] мм, форма просвета овальная\./);
+  assert.equal((text.match(/форма просвета круглая/g) || []).length, 8);
+  assert.doesNotMatch(text, /Плотность контрастирования|Периаортальной жидкости|Ветви дуги/);
+});
+
+test("КТА лёгочных артерий: дыхательные артефакты меняют описание и заключение", () => {
+  const { el, tpl } = template("cta-pulmonary.md");
+  assert.doesNotMatch(tpl.text(), /артефакт/i);
+  const toggle = [...el.querySelectorAll(".tg")].find(node =>
+    node.firstElementChild.textContent.startsWith("В сегментарных и субсегментарных"));
+  toggle.click();
+  const [description, conclusion] = tpl.text().split("ЗАКЛЮЧЕНИЕ:");
+  assert.match(description, /На фоне артефактов от дыхательных движений/);
+  assert.doesNotMatch(description, /В сегментарных и субсегментарных лёгочных артериях дефектов наполнения не выявлено/);
+  assert.match(conclusion, /Оценка сегментарных и субсегментарных ветвей ограничена/);
+});
+
+test("КТА ног: правый и левый блоки отделены в описании и заключении", () => {
+  for (const file of ["cta-legs-short.md", "cta-legs.md"]) {
+    const { tpl } = template(file);
+    for (const section of tpl.text().split("ЗАКЛЮЧЕНИЕ:")) {
+      assert.match(section, /^Справа:\n[^\n]+[\s\S]*^Слева:\n[^\n]+/m, file);
+    }
+  }
+});
+
+test("Рентгенография ОГК: сторона релаксации синхронизируется с заключением", () => {
+  const { el, tpl } = template("xr-chest-full.md");
+  const toggles = () => [...el.querySelectorAll(".tg")];
+  const diaphragm = toggles().find(node =>
+    node.firstElementChild.textContent === "Диафрагма без особенностей.");
+  assert.doesNotMatch(tpl.text(), /релаксация/i);
+  diaphragm.click();
+  assert.equal((tpl.text().match(/Релаксация правого купола диафрагмы\./g) || []).length, 2);
+  toggles().find(node => node.firstElementChild.textContent === "правого купола").click();
+  assert.equal((tpl.text().match(/Релаксация левого купола диафрагмы\./g) || []).length, 2);
 });
 
 test("КТ ОГК: фраза о свежих изменениях исчезает при находке и возвращается после сброса", () => {

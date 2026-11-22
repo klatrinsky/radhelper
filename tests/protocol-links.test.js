@@ -60,3 +60,42 @@ test("каждый вариант из каталога имеет уникал�
   const ids = files.map(file => file.replace(/\.md$/i, ""));
   assert.equal(new Set(ids).size, ids.length);
 });
+
+test("заголовок новостей открывает архив, условия использования находятся в подвале", async t => {
+  const w = await openSite();
+  t.after(() => w.close());
+  const $ = selector => w.document.querySelector(selector);
+  const link = $("#news h2 a");
+  assert.match(link.textContent, /Что нового/);
+  assert.equal(link.hash, "#newsArchive");
+  assert.equal($("footer #newsArchiveBtn"), null);
+  assert.equal($("footer p:nth-child(2) a").getAttribute("href"), "LICENSE");
+  assert.match(read("LICENSE"), /CC BY-NC 4\.0/);
+
+  link.click();
+  assert.ok($("#newsArchive").open);
+  assert.ok(w.document.querySelectorAll("#newsArchiveBody h2").length > 3);
+  $(".news-arch-x").click();
+  assert.equal($("#newsArchive").open, false);
+});
+
+test("КТ височных костей: галерея открывает локальные снимки поверх шаблона", async t => {
+  const w = await openSite({ query: "?protocol=ct-temporal" });
+  t.after(() => w.close());
+  const guide = w.document.querySelector(".tpl .kl-guide");
+  const dialog = guide.querySelector("dialog");
+  dialog.showModal = () => { dialog.open = true; };
+  dialog.close = () => { dialog.open = false; };
+  assert.equal(guide.open, false);
+  assert.equal(guide.querySelectorAll(".kl-zoom").length, 3);
+  for (const image of guide.querySelectorAll(".kl-zoom img")) {
+    const src = image.getAttribute("src");
+    assert.match(src, /^img\/temporal\//);
+    image.closest("button").click();
+    assert.ok(dialog.open);
+    assert.equal(dialog.querySelector("img").getAttribute("src"), src);
+    dialog.querySelector("button").click();
+    assert.equal(dialog.open, false);
+  }
+  assert.equal(w.location.search, "?protocol=ct-temporal");
+});

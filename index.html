@@ -172,6 +172,7 @@
   .sheet-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px;
     padding: 6px 6px 6px 14px; border-bottom: 1px solid var(--line); background: var(--head);
     font-size: 0.8rem; color: var(--muted); }
+  .sheet-bar.actions { justify-content: flex-end; }
   .copy { height: 38px; padding: 0 16px; border: 0; border-radius: 8px; background: var(--accent);
     color: var(--bg); font-size: 0.9rem; font-weight: 600; cursor: pointer; }
   .tpl { margin: 0; padding: 12px 14px; font: 0.88rem/1.75 ui-monospace, Menlo, Consolas, monospace;
@@ -199,6 +200,7 @@
     background: var(--warn-bg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     font-size: 0.85rem; line-height: 1.9; }
   .ctl .calc { color: var(--warn); }
+  .ctl summary { cursor: pointer; }
   /* ((…)) внутри фразы: поля для расчёта, на экране есть, в копию не идут */
   .hid { padding: 1px 5px; border-radius: 4px; background: var(--warn-bg); color: var(--warn);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 0.82rem; }
@@ -407,9 +409,7 @@
   /* «Частые вопросы о катетерах»: вопрос — отдельной строкой и другим цветом, чтобы не сливался с ответом */
   #catheter-faq .body p > b:first-child { display: block; color: var(--accent); margin-bottom: 2px; }
 
-  /* Архив новостей: кнопка в подвале открывает окно со всеми выпусками */
-  .linkbtn { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
-  .linkbtn[hidden] { display: none; }
+  /* Архив новостей открывается из заголовка ленты. */
   .news-arch { width: min(620px, calc(100vw - 24px)); max-height: min(80vh, 80dvh); padding: 0;
     border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); }
   .news-arch::backdrop { background: rgba(0, 0, 0, .45); }
@@ -482,8 +482,8 @@ else if (!location.hash) document.body.classList.add("home");
 
 <footer class="wrap">
   <p>Справочный материал для врачей и ординаторов, не клиническая рекомендация.</p>
+  <p>© 2026 Е. А. Круглов · <a href="LICENSE">Условия использования RadHelper</a> · <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.ru" rel="license">CC BY-NC 4.0</a></p>
   <p>Поругать автора: <a href="https://t.me/klatrinsky" target="_blank" rel="noopener">Telegram</a> · <a href="mailto:klatrinsky@gmail.com?subject=rad-helper%3A%20%D0%B7%D0%B0%D0%BC%D0%B5%D1%87%D0%B0%D0%BD%D0%B8%D0%B5">Email</a></p>
-  <p><button type="button" class="linkbtn" id="newsArchiveBtn" hidden>Архив новостей</button></p>
 </footer>
 <dialog class="news-arch" id="newsArchive" aria-labelledby="newsArchiveTitle">
   <div class="news-arch-h"><b id="newsArchiveTitle">Архив новостей</b>
@@ -876,7 +876,7 @@ if (window.RH_LAB) {
             ? '<div class="sheet"><div class="sheet-bar"><span>Интерактивный конструктор · отдельная страница Radhelper</span></div>' +
               '<div class="app-entry"><p>' + inline(v.text) + '</p><a href="' + esc(v.page) + '">Открыть конструктор переломов →</a></div></div>'
             : (v.alert ? '<div class="alert">' + esc(v.alert) + '</div>' : "") +
-              '<div class="sheet"><div class="sheet-bar"><span>Шаблон · ' + esc(v.variant) + '</span>' +
+              '<div class="sheet"><div class="sheet-bar actions">' +
               '<span class="btns"><button type="button" class="reset">Сбросить</button>' +
               '<button type="button" class="copy">Скопировать</button></span></div><div class="tpl"></div></div>') +
           (v.hints.length ? '<details class="study-hints"><summary>Подсказки</summary><div class="hints"></div></details>' : "");
@@ -1014,13 +1014,28 @@ if (window.RH_LAB) {
     addImageGuide(el, hip ? "Как различить фиксацию чашки?" : "Как выглядят остеотомии?", figures, source);
   }
 
-  function addImageGuide(el, title, figures, source) {
+  function addTemporalGuide(el) {
+    const images = [
+      ["middle-ear.png", "Среднее ухо. A–C: сохранная шпора, воздушный эпитимпанум и сочленение наковальни со стременем. D–I: примеры холестеатомы и хронического отита."],
+      ["inner-ear.jpg", "Внутреннее ухо и канал лицевого нерва. На аксиальных срезах отмечены улитка, преддверие, полукружные каналы, внутренний слуховой проход (IAC) и сегменты канала VII нерва."],
+      ["tegmen-labyrinth.png", "Эрозии при холестеатоме. A–B: латеральный полукружный канал, C: крыша барабанной полости, D: базальный завиток улитки."]
+    ];
+    const figures = images.map(([file, caption]) =>
+      '<figure><button type="button" class="kl-zoom" aria-haspopup="dialog" aria-label="Увеличить: ' +
+      caption + '"><img src="img/temporal/' + file + '" loading="lazy" alt="' + caption +
+      '"></button><figcaption>' + caption + '</figcaption></figure>').join("");
+    const source = 'P. Touska, S. E. J. Connor. <a href="https://link.springer.com/article/10.1007/s00330-024-11021-x#Fig1" target="_blank" rel="noopener">European Radiology, 2025, рис. 1</a> и <a href="https://link.springer.com/article/10.1007/s00330-024-11021-x#Fig3" target="_blank" rel="noopener">рис. 3</a>. ' +
+      'P. Feraco, S. Piccinini, C. Gagliardo. <a href="https://link.springer.com/article/10.1007/s11547-021-01387-z#Fig3" target="_blank" rel="noopener">La Radiologia Medica, 2021, рис. 3</a>.';
+    addImageGuide(el, "Ориентиры на КТ височных костей", figures, source, "Увеличенный снимок КТ");
+  }
+
+  function addImageGuide(el, title, figures, source, imageLabel = "Увеличенная рентгенограмма") {
     const guide = document.createElement("details");
     guide.className = "kl-guide";
     guide.innerHTML = '<summary class="measure-help-toggle">' + title + '</summary>' +
       '<div class="kl-panel"><div class="kl-images">' + figures + '</div>' +
       '<p class="kl-source">' + source + ' <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p></div>' +
-      '<dialog class="kl-viewer" aria-label="Увеличенная рентгенограмма">' +
+      '<dialog class="kl-viewer" aria-label="' + imageLabel + '">' +
       '<div class="kl-viewer-bar"><strong></strong><button type="button" class="measure-help-toggle" autofocus>Закрыть</button></div><img alt=""></dialog>';
     const dialog = guide.querySelector("dialog");
     const enlarged = dialog.querySelector("img");
@@ -1129,10 +1144,10 @@ if (window.RH_LAB) {
   // NASCET сам ставит {#градация П: незначимый|умеренный|выраженный}: < 50% — 0, 50–69% — 1, ≥ 70% — 2.
   ["П", "Л"].forEach(side => {
     CALC["NASCET " + side] = { inputs: ["Dмин " + side, "Dдист " + side], digits: 0,
-      f: (dmin, ddist) => (1 - dmin / ddist) * 100,
-      toggle: "градация " + side, pick: x => x < 50 ? 0 : x < 70 ? 1 : 2 };
+      f: (dmin, ddist) => dmin > 0 && ddist > 0 ? Math.max(0, 1 - dmin / ddist) * 100 : NaN,
+      toggle: "градация " + side, pick: x => x < 50 ? 0 : x < 70 ? 1 : 2, reset: true };
     CALC["ECST " + side] = { inputs: ["Dмин " + side, "Dлук " + side], digits: 0,
-      f: (dmin, dbulb) => (1 - dmin / dbulb) * 100 };
+      f: (dmin, dbulb) => dmin > 0 && dbulb >= dmin ? (1 - dmin / dbulb) * 100 : NaN };
   });
 
   // Компрессионный перелом: снижение высоты тела позвонка, % = (1 − снижённая / должная) × 100, и степень по Genant (1993):
@@ -1695,38 +1710,52 @@ if (window.RH_LAB) {
     // строка «> …» — пульт: поля и переключатели для расчётов (пол, возраст…); видна, но в копируемый текст не попадает
     const lines = text.split("\n");
     lines.forEach((line, i) => {
+      const condition = line.match(/^\?([^=]+)=(\d+)>\s*/);
+      const active = () => {
+        const name = lower(condition[1]);
+        const index = Number(condition[2]) - 1;
+        return toggles["*" + name]?.sel.has(index) || toggles["#" + name]?.i === index;
+      };
+      if (condition) line = line.slice(condition[0].length);
       const ctl = line.match(/^>\s?(.*)$/);
+      const folded = ctl?.[1].match(/^\[([^\]]+)\]\s+(.*)$/);
       const kl = ctl?.[1].match(/^Келлгрен — Лоуренс: (колено|ТБС)$/);
       if (ctl?.[1] === "Атлас: чашка" || ctl?.[1] === "Атлас: стопа") {
         addPostopGuide(el, ctl[1] === "Атлас: чашка");
+      } else if (ctl?.[1] === "Атлас: височная кость") {
+        addTemporalGuide(el);
       } else if (kl) {
         addKellgrenGuide(el, kl[1]);
       } else if (line.trim() === "> {{ВИЛЛИЗИЕВ КРУГ}}") {
         const panel = document.createElement("section");
+        if (condition) visibleWhen.set(panel, active);
         el.append(panel);
+        lineEls.push(panel);
         window.createWillisDiagram(panel, result => {
           for (const [key, span] of willisFields) span.textContent = result ? result[key] : "";
           tidy();
         });
       } else if (ctl) {
-        const box = document.createElement("div");
+        const box = document.createElement(folded ? "details" : "div");
         box.className = "ctl";
-        parse(ctl[1], box, [], 0);
+        if (folded) {
+          const summary = document.createElement("summary");
+          summary.textContent = folded[1];
+          box.append(summary);
+        }
+        parse(folded ? folded[2] : ctl[1], box, [], 0);
+        if (condition) {
+          visibleWhen.set(box, active);
+          lineEls.push(box);
+        }
         el.append(box);
       } else {
         const ln = document.createElement("span");
         ln.className = "ln";
         // ?группа=номер> показывает и копирует строку только для выбранного варианта.
-        const condition = line.match(/^\?([^=]+)=(\d+)>\s*/);
-        const active = () => {
-          const name = lower(condition[1]);
-          const index = Number(condition[2]) - 1;
-          return toggles["*" + name]?.sel.has(index) || toggles["#" + name]?.i === index;
-        };
         const output = condition ? [] : parts;
         if (condition) {
           visibleWhen.set(ln, active);
-          line = line.slice(condition[0].length);
           parts.push(() => active() ? output.map(read => read()).join("") : "");
         }
         parse(line + (i < lines.length - 1 ? "\n" : ""), ln, output, 0);
@@ -1779,13 +1808,11 @@ if (window.RH_LAB) {
 <script>
 /* «Что нового»: content/news.md у врача, content/news_lab.md у лаборанта. «# …» — заголовок, «- …» — пункт.
    [[слово]] подставляет запрос в поиск врача; [текст](?lab#раздел) открывает раздел у лаборанта.
-   На главной — три верхних выпуска. Если выпусков больше, в подвале появляется «Архив новостей»:
-   окно со всеми выпусками выбранного файла. */
+   На главной — три верхних выпуска. Ссылка в заголовке открывает архив выбранной ленты. */
 (function () {
   const HOME = 3;
   const box = document.getElementById("news");
   const q = document.getElementById("q");
-  const btn = document.getElementById("newsArchiveBtn");
   const dlg = document.getElementById("newsArchive");
   const all = document.getElementById("newsArchiveBody");
   if (!box || location.protocol === "file:") return;
@@ -1806,7 +1833,11 @@ if (window.RH_LAB) {
     root.addEventListener("click", e => { const el = e.target.closest(".try"); if (el) go(el); });
     root.addEventListener("keydown", e => { const el = e.target.closest(".try"); if (el && e.key === "Enter") go(el); });
   }
-  const close = () => { if (dlg.open) dlg.close(); };
+  const close = () => {
+    if (!dlg.open) return;
+    if (typeof dlg.close === "function") dlg.close();
+    else dlg.removeAttribute("open");
+  };
 
   fetch(window.RH_LAB ? "content/news_lab.md" : "content/news.md", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
     let blocks = [];
@@ -1825,18 +1856,26 @@ if (window.RH_LAB) {
     box.hidden = false;
     tryHandlers(box);
 
-    if (blocks.length <= HOME || !dlg || !btn) return;   // архивировать пока нечего
+    const heading = box.querySelector("h2");
+    if (!heading || !dlg) return;
     all.innerHTML = html(blocks);
     tryHandlers(all, close);
     all.addEventListener("click", e => {
       if (e.target.closest('a[href^="?lab#"]')) close();
     });
-    btn.hidden = false;
-    btn.addEventListener("click", () => {
+    const link = document.createElement("a");
+    link.href = "#newsArchive";
+    link.textContent = heading.textContent;
+    link.setAttribute("aria-haspopup", "dialog");
+    heading.replaceChildren(link);
+    const openArchive = () => {
+      if (dlg.open) return;
       if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
       dlg.scrollTop = 0;
-    });
-    dlg.querySelector(".news-arch-x").addEventListener("click", () => { close(); dlg.removeAttribute("open"); });
+    };
+    link.addEventListener("click", event => { event.preventDefault(); openArchive(); });
+    if (location.hash === link.hash) openArchive();
+    dlg.querySelector(".news-arch-x").addEventListener("click", close);
     dlg.addEventListener("click", e => { if (e.target === dlg) close(); });   // клик мимо окна
   }).catch(() => {});
 })();
