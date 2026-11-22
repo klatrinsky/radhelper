@@ -59,6 +59,7 @@ xr-ankle.md
 xr-feet.md
 xr-feet-hallux.md
 xr-feet-flat.md
+xr-foot-postop.md
 xr-urography.md
 
 # Денситометрия

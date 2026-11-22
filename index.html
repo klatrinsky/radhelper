@@ -146,9 +146,15 @@
   .study { margin: 14px 0 6px; display: flex; flex-direction: column; gap: 10px; }
   .study[hidden] { display: none; }
   body.protocol-view #list, body.protocol-view #note { display: none; }
-  .study-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+  .study-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 0 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 0.78rem; }
+  .share-protocol { margin-inline-start: auto; min-height: 44px; padding: 0 4px; border: 0;
+    background: transparent; color: var(--accent); font: inherit; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px; }
+  .share-protocol:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .share-protocol:hover { text-decoration-thickness: 2px; }
   .picks { display: flex; flex-wrap: wrap; gap: 6px; }
-  .pick, .share-protocol { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+  .pick { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card);
     color: var(--ink); font-size: 0.88rem; cursor: pointer; text-align: left; }
   .pick[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
   .app-entry { padding: 14px; display: grid; gap: 12px; }
@@ -158,7 +164,6 @@
     background: var(--accent); color: var(--card); font-weight: 700; }
   .app-entry a:hover { opacity: .9; }
   .study h2 { margin: 0; font-size: 1.1rem; line-height: 1.3; }
-  .study h2 small { display: block; font-size: 0.78rem; font-weight: 400; color: var(--muted); margin-top: 2px; }
   .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
   .tab { height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px;
     background: transparent; color: var(--muted); font-size: 0.85rem; cursor: pointer; }
@@ -857,8 +862,11 @@ if (window.RH_LAB) {
         studyEl.innerHTML =
           (found.length > 1 ? '<div class="picks">' + found.map((x, i) =>
             '<button type="button" class="pick" data-i="' + i + '" aria-pressed="' + (x === s) + '">' + esc(x.title) + "</button>").join("") + "</div>" : "") +
-          '<div class="study-heading"><h2>' + esc(s.title) + (s.modality ? "<small>" + esc(s.modality) + "</small>" : "") + "</h2>" +
-          (v.kind === "tool" ? "" : '<button type="button" class="share-protocol">Скопировать ссылку</button>') + "</div>" +
+          '<div><h2>' + esc(s.title) + "</h2>" +
+          (s.modality || v.kind !== "tool" ? '<div class="study-meta">' +
+            (s.modality ? "<span>" + esc(s.modality) + "</span>" : "") +
+            (v.kind === "tool" ? "" : '<button type="button" class="share-protocol">Скопировать ссылку</button>') +
+            "</div>" : "") + "</div>" +
           (s.variants.length > 1 ? '<div class="tabs" role="tablist">' + s.variants.map((x, i) =>
             '<button type="button" class="tab" role="tab" data-v="' + i + '" aria-selected="' + (i === vi) + '">' + esc(x.variant) + "</button>").join("") + "</div>" : "") +
           (v.kind === "tool"
@@ -984,9 +992,32 @@ if (window.RH_LAB) {
       return '<figure><button type="button" class="kl-zoom" aria-haspopup="dialog" aria-label="Увеличить снимок: степень ' + grade +
         '"><img src="' + src + '" loading="lazy" alt="' + alt + '"></button><figcaption>Степень ' + grade + '</figcaption></figure>';
     }).join("");
+    addImageGuide(el, "Сравнить степени Келлгрена — Лоуренса", figures, source);
+  }
+
+  function addPostopGuide(el, hip) {
+    const images = hip ? [
+      ["hip-7.jpg", "Цементная чашка. Треугольные метки указывают на цементную мантию вокруг вертлужного компонента."],
+      ["hip-4.jpg", "Бесцементная чашка (press-fit). Металлическая оболочка прилежит к ложу без цементной мантии."],
+      ["hip-6.jpg", "Бесцементная чашка с винтом. Винт проходит из чашки в подвздошную кость. Цемент вокруг ножки относится к бедренному компоненту."]
+    ] : [
+      ["scarf-akin.jpg", "Scarf и Akin на одном снимке. Чёрные стрелки указывают на фиксацию I плюсневой кости после Scarf, белая — на остеотомию проксимальной фаланги I пальца по Akin."],
+      ["weil.jpg", "Пример подголовчатой остеотомии по Weil. Чёрные стрелки указывают на винты в дистальном отделе II плюсневой кости. Белая стрелка отмечает отдельное вмешательство на пальце."]
+    ];
+    const figures = images.map(([file, caption]) =>
+      '<figure><button type="button" class="kl-zoom" aria-haspopup="dialog" aria-label="Увеличить: ' +
+      caption + '"><img src="img/postop/' + file + '" loading="lazy" alt="' + caption +
+      '"></button><figcaption>' + caption + '</figcaption></figure>').join("");
+    const source = hip
+      ? 'J. Vanrusselt и соавт. <a href="https://doi.org/10.1007/s13244-015-0438-5" target="_blank" rel="noopener">Insights into Imaging, 2015, рис. 7, 4 и 6</a>.'
+      : 'M. Soltanolkotabi и соавт. <a href="https://doi.org/10.3390/diagnostics12051090" target="_blank" rel="noopener">Diagnostics, 2022, рис. 3B и 4B</a>. Панели выделены и уменьшены.';
+    addImageGuide(el, hip ? "Как различить фиксацию чашки?" : "Как выглядят остеотомии?", figures, source);
+  }
+
+  function addImageGuide(el, title, figures, source) {
     const guide = document.createElement("details");
     guide.className = "kl-guide";
-    guide.innerHTML = '<summary class="measure-help-toggle">Сравнить степени Келлгрена — Лоуренса</summary>' +
+    guide.innerHTML = '<summary class="measure-help-toggle">' + title + '</summary>' +
       '<div class="kl-panel"><div class="kl-images">' + figures + '</div>' +
       '<p class="kl-source">' + source + ' <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p></div>' +
       '<dialog class="kl-viewer" aria-label="Увеличенная рентгенограмма">' +
@@ -1063,6 +1094,8 @@ if (window.RH_LAB) {
   const PH_MM = [];                                   // поля, где в пустом поле вместо имени подсказка «мм»
   // Калькуляторы. Чтобы добавить свой: имя, какие поля нужны, формула и сколько знаков после запятой.
   const CALC = {
+    "MEYERDING": { inputs: ["Смещение"], text: percent =>
+      percent <= 25 ? "I" : percent <= 50 ? "II" : percent <= 75 ? "III" : percent <= 100 ? "IV" : "V" },
     "NASCET": { inputs: ["Dмин", "Dдист"], digits: 0,
       f: (dmin, ddist) => (1 - dmin / ddist) * 100 },
     "ECST":   { inputs: ["Dмин", "Dлук"],  digits: 0,
@@ -1167,7 +1200,7 @@ if (window.RH_LAB) {
   ];
   const DXA_IN = ["Возраст"].concat(DXA.flatMap(r => ["T " + r.k, "T% " + r.k, "Z " + r.k, "Z% " + r.k, "было " + r.k, "BMD " + r.k, "BMD было " + r.k]));
   const DXA_USES = ["пол", "менопауза", "TBS", "бедро", "рука", "режим динамики", "контроль"].concat(DXA.map(r => r.show));
-  const PH = { "Возраст": "__", "FRAX осн": "%", "L1 HU": "HU", "Диаметр восходящей аорты": "__", "Диаметр лёгочного ствола": "__" };                    // подсказка в пустом поле вместо имени
+  const PH = { "Смещение": "__", "Возраст": "__", "FRAX осн": "%", "L1 HU": "HU", "Диаметр восходящей аорты": "__", "Диаметр лёгочного ствола": "__" };                    // подсказка в пустом поле вместо имени
   PH_MM.forEach(n => { PH[n] = "мм"; });
   DXA.forEach(r => Object.assign(PH, { ["T " + r.k]: "T", ["T% " + r.k]: "%", ["Z " + r.k]: "Z", ["Z% " + r.k]: "%", ["было " + r.k]: "%", ["BMD " + r.k]: "г/см²", ["BMD было " + r.k]: "г/см²" }));
   const r1 = x => Math.round(x * 10) / 10;                         // сравниваем с порогами по одному знаку, как в протоколе
@@ -1294,6 +1327,7 @@ if (window.RH_LAB) {
     el.innerHTML = "";
     const parts = [], calcs = [], named = {}, linked = {}, toggles = {}, lists = [], lineEls = [];
     const willisFields = new Map();
+    const visibleWhen = new Map();
     const PH_OF = new Map();                    // «+ имя» пустого варианта → { group, inst }
     let missing = [];                           // незаполненное в копируемом тексте: [{ label, el }] — собирается при каждом text()
     // В DXA предыдущие проценты храним отдельно для T и Z. При смене пациента не подменяем один критерий другим.
@@ -1397,7 +1431,7 @@ if (window.RH_LAB) {
         });
       } else if (lk) {
         const k = lower(lk[1].trim());
-        f.placeholder = k === "дата предыдущего исследования" ? "дд.мм.гггг" : "__";
+        f.placeholder = ["дата предыдущего исследования", "дата операции"].includes(k) ? "дд.мм.гггг" : "__";
         if (lk[2]) f.value = lk[2].trim();
         (linked[k] = linked[k] || []).push(f);
         f.addEventListener("input", () => linked[k].forEach(o => { if (o !== f) { o.value = f.value; sizeField(o); } }));
@@ -1420,12 +1454,13 @@ if (window.RH_LAB) {
     function toggle(inner, target, out, depth) {                         // {а|б|в} или {#имя: а|б|в}
       let name = null, multi = false;
       const ms = inner.match(/^\s*\*([^:|]*):\s*/);                       // {*имя: +а|б|в} — выбор нескольких
-      const nm = inner.match(/^\s*#([^:|]+):\s*/);
+      const explicitSelect = inner.trimStart().startsWith("!");
+      const nm = inner.match(/^\s*[#!]([^:|]+):\s*/);
       if (ms) { multi = true; name = ms[1].trim() || null; inner = inner.slice(ms[0].length); }
       else if (nm) { name = nm[1].trim(); inner = inner.slice(nm[0].length); }
       let opts = splitTop(inner).map(x => x.trim());
       // список: 5 и больше коротких вариантов без полей и скобок (позвонки) — выпадающий список; «+» — выбран по умолчанию
-      const pick = multi || (opts.length >= 5 && opts.every(o => /^\+?[^\[\]{}()]{1,8}$/.test(o)));
+      const pick = explicitSelect || multi || (opts.length >= 5 && opts.every(o => /^\+?[^\[\]{}()]{1,8}$/.test(o)));
       const def = pick ? opts.map((o, k) => o.startsWith("+") ? k : -1).filter(k => k >= 0) : [];
       if (pick) opts = opts.map(o => o.replace(/^\+\s*/, ""));
       // связаны переключатели с одним именем или с одинаковыми вариантами
@@ -1492,7 +1527,8 @@ if (window.RH_LAB) {
     }
     function tidy() {
       lineEls.forEach(ln => {
-        if (!ln.children.length) return;                        // пустая строка-разделитель из шаблона остаётся
+        if (visibleWhen.has(ln) && !visibleWhen.get(ln)()) { ln.hidden = true; return; }
+        if (!ln.children.length) { ln.hidden = false; return; }                        // пустая строка-разделитель из шаблона остаётся
         const phs = [...ln.querySelectorAll(".opt-empty")].filter(x => PH_OF.has(x) && !x.hidden);
         const echo = phs.every(x => {
           const { group, inst } = PH_OF.get(x);
@@ -1512,6 +1548,7 @@ if (window.RH_LAB) {
     function dropdown(opts, group, key, target, out) {
       const sel = document.createElement("select");
       sel.className = "tg sel"; sel.title = "Выберите из списка";
+      if (key.startsWith("#")) sel.setAttribute("aria-label", key.slice(1));
       opts.forEach(o => sel.add(new Option(o)));
       const inst = { views: opts.map(() => ({})), update: () => { sel.selectedIndex = group.i % opts.length; } };
       group.insts.push(inst);
@@ -1660,7 +1697,9 @@ if (window.RH_LAB) {
     lines.forEach((line, i) => {
       const ctl = line.match(/^>\s?(.*)$/);
       const kl = ctl?.[1].match(/^Келлгрен — Лоуренс: (колено|ТБС)$/);
-      if (kl) {
+      if (ctl?.[1] === "Атлас: чашка" || ctl?.[1] === "Атлас: стопа") {
+        addPostopGuide(el, ctl[1] === "Атлас: чашка");
+      } else if (kl) {
         addKellgrenGuide(el, kl[1]);
       } else if (line.trim() === "> {{ВИЛЛИЗИЕВ КРУГ}}") {
         const panel = document.createElement("section");
@@ -1677,7 +1716,20 @@ if (window.RH_LAB) {
       } else {
         const ln = document.createElement("span");
         ln.className = "ln";
-        parse(line + (i < lines.length - 1 ? "\n" : ""), ln, parts, 0);
+        // ?группа=номер> показывает и копирует строку только для выбранного варианта.
+        const condition = line.match(/^\?([^=]+)=(\d+)>\s*/);
+        const active = () => {
+          const name = lower(condition[1]);
+          const index = Number(condition[2]) - 1;
+          return toggles["*" + name]?.sel.has(index) || toggles["#" + name]?.i === index;
+        };
+        const output = condition ? [] : parts;
+        if (condition) {
+          visibleWhen.set(ln, active);
+          line = line.slice(condition[0].length);
+          parts.push(() => active() ? output.map(read => read()).join("") : "");
+        }
+        parse(line + (i < lines.length - 1 ? "\n" : ""), ln, output, 0);
         el.append(ln);
         lineEls.push(ln);
       }
