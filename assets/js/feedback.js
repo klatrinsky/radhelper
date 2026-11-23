@@ -10,6 +10,19 @@
 
   if (!FORM) return;
 
+  // Подсказка на главной: не повторяем её под каждым протоколом.
+  const list = document.getElementById("list");
+  if (list) {
+    const tip = document.createElement("p");
+    tip.className = "feedback-help";
+    const style = document.createElement("style");
+    style.textContent = "body.protocol-view .feedback-help { display:none }";
+    document.head.appendChild(style);
+    tip.textContent = "Нашли ошибку или хотите предложить изменение? Выделите текст и нажмите «Поправить».";
+    tip.style.cssText = "margin:20px 12px 28px;text-align:center;color:var(--muted);font-size:.85rem;line-height:1.5";
+    list.insertAdjacentElement("afterend", tip);
+  }
+
   // Кроме шаблонов и справочных карточек, отдельные страницы могут пометить свои блоки.
   const ZONES = "#study .tpl, #study .fx, #study .hints .body, #list details.sec .body, [data-feedback-source]";
 
