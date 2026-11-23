@@ -36,6 +36,7 @@ xr-fractures.md
 xr-chest.md
 xr-chest-age.md
 xr-chest-supine.md
+xr-chest-portable.md
 xr-chest-full.md
 xr-spine-cervical.md
 xr-spine-cervical-short.md
