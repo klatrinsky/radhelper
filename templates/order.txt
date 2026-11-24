@@ -33,6 +33,7 @@ ct-spine-lumbar.md
 
 # Рентген
 xr-fractures.md
+xr-sinus.md
 xr-chest.md
 xr-chest-age.md
 xr-chest-supine.md
@@ -44,6 +45,8 @@ xr-spine-thoracic.md
 xr-spine-thoracic-short.md
 xr-spine-lumbar.md
 xr-spine-lumbar-short.md
+xr-spine-thoracolumbar.md
+xr-spine-thoracolumbar-short.md
 xr-knee.md
 xr-knee-oa.md
 xr-knee-oa-both.md

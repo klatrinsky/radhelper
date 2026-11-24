@@ -3,6 +3,65 @@
    Движок (index.html) ставит на это место пустой блок и вызывает RH_WIDGETS[имя](блок). */
 window.RH_WIDGETS = window.RH_WIDGETS || {};
 
+RH_WIDGETS.egfr = function (el) {
+  el.innerHTML = `
+    <label class="w-field"><span class="w-label">Возраст, лет</span>
+      <input class="w-input" data-age type="number" min="18" step="1" inputmode="numeric"></label>
+    <label class="w-field"><span class="w-label">Пол</span>
+      <select class="w-input" data-sex>
+        <option value="">Выберите пол</option><option value="female">Женский</option><option value="male">Мужской</option>
+      </select></label>
+    <label class="w-field"><span class="w-label">Креатинин сыворотки, мкмоль/л</span>
+      <input class="w-input" data-creatinine type="text" inputmode="decimal" autocomplete="off"></label>
+    <div class="w-out" role="status">
+      <span class="w-num">—</span><span class="w-hint"></span><strong class="w-egfr-notice" hidden>Сообщить врачу</strong>
+    </div>`;
+  const age = el.querySelector("[data-age]");
+  const sex = el.querySelector("[data-sex]");
+  const creatinine = el.querySelector("[data-creatinine]");
+  const out = el.querySelector(".w-out");
+  const number = out.querySelector(".w-num");
+  const hint = out.querySelector(".w-hint");
+  const notice = out.querySelector(".w-egfr-notice");
+  const format = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
+
+  function update() {
+    out.className = "w-out";
+    number.textContent = "—";
+    notice.hidden = true;
+    hint.textContent = "Укажите возраст, пол и креатинин.";
+    if (age.validity.badInput || (age.value && !age.validity.valid)) {
+      hint.textContent = "Укажите возраст в полных годах, от 18 лет.";
+      return;
+    }
+    const raw = creatinine.value.trim().replace(",", ".");
+    const serum = Number(raw);
+    if (raw && (!/^\d+(\.\d+)?$/.test(raw) || !Number.isFinite(serum) || serum <= 0)) {
+      hint.textContent = "Введите креатинин больше нуля.";
+      return;
+    }
+    if (!age.value || !sex.value || !raw) return;
+
+    const female = sex.value === "female";
+    const ratio = serum / (88.4 * (female ? 0.7 : 0.9));
+    const egfr = 142 * Math.min(ratio, 1) ** (female ? -0.241 : -0.302) *
+      Math.max(ratio, 1) ** -1.2 * 0.9938 ** age.valueAsNumber * (female ? 1.012 : 1);
+    if (!Number.isFinite(egfr)) {
+      hint.textContent = "Проверьте введённые значения.";
+      return;
+    }
+    out.classList.add(egfr >= 60 ? "q-good" : egfr >= 30 ? "q-ok" : "q-bad");
+    // Отображаемая десятая доля не должна переходить через пороги 30, 45 и 60.
+    number.textContent = format.format(Math.floor(egfr * 10) / 10);
+    hint.textContent = "мл/мин/1,73 м²";
+    notice.hidden = egfr >= 45;
+  }
+
+  el.addEventListener("input", update);
+  sex.addEventListener("change", update);
+  update();
+};
+
 /* Объём контраста для лаборанта.
    Не ангиография: 300 — вес × 1,6; 320 — × 1,5; 350 — × 1,4; 370 — × 1,3; 400 — × 1,2 (≈ 480 мг йода/кг);
      до целого мл; не больше 150 мл.
