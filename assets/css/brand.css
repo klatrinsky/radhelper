@@ -34,6 +34,14 @@ body.lab .home-btn span { display: none; }
   .rh-helper { transition: background-color 200ms; }
 }
 
+.feedback-help {
+  margin: 20px 12px 28px; text-align: center; color: var(--muted); font-size: .85rem; line-height: 1.5;
+}
+#study[hidden] + .feedback-help,
+#study:not([data-src]) + .feedback-help,
+#study[data-src]:not([hidden]) ~ #list + .feedback-help,
+body.protocol-view #list + .feedback-help { display: none; }
+
 .fb-btn {
   position: fixed; z-index: 30; height: 36px; padding: 0 14px; border: 0; border-radius: 18px;
   background: var(--ink); color: var(--bg); font: inherit; font-size: 0.85rem; font-weight: 600;

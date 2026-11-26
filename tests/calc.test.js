@@ -244,7 +244,7 @@ test("КТ почек: автоматическое заключение сох�
 });
 
 test("Агатстон: сумма, границы CAC-DRS и число артерий в описании и заключении", () => {
-  const { tpl, type } = template("ct-coronary-calcium.md");
+  const { el, tpl, type } = template("ct-coronary-calcium.md");
   const names = ["CAC LM", "CAC LAD", "CAC LCx", "CAC RCA"];
   const set = values => values.forEach((value, i) => type(names[i], value));
   const cases = [
@@ -256,6 +256,14 @@ test("Агатстон: сумма, границы CAC-DRS и число арт�
     [["299,7", "0,1", "0.1", "0,1"], "300", "A3/N4"],
   ];
   assert.equal(tpl.missing("conclusion")[0].label, "CAC LM");
+  const age = el.querySelector('input[placeholder="__"]');
+  assert.equal(age.value, "");
+  assert.match(tpl.text("protocol"), /Коронарный возраст — \[__\]\./);
+  assert.ok(tpl.missing("protocol").some(field => field.label === "Коронарный возраст"));
+  age.value = "64";
+  age.dispatchEvent(new W.Event("input", { bubbles: true }));
+  assert.match(tpl.text("protocol"), /Коронарный возраст — 64\./);
+  assert.doesNotMatch(tpl.text("conclusion"), /Коронарный возраст/);
   for (const [values, sum, category] of cases) {
     set(values);
     for (const section of ["protocol", "conclusion"]) {

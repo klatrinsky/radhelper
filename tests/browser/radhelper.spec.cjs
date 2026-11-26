@@ -84,6 +84,46 @@ test('поиск открывает подходящий шаблон', async ({
   await expect(page.getByLabel(findingsLabel)).toBeEditable();
 });
 
+test('подсказка «Поправить» видна под открытым шаблоном и в конструкторе переломов', async ({ page }) => {
+  const help = page.locator('.feedback-help:visible');
+  const message = 'Нашли ошибку или хотите предложить изменение? Выделите текст и нажмите «Поправить».';
+
+  await page.goto(brainProtocol);
+  const studyHelp = page.locator('#study + .feedback-help');
+  await expect(studyHelp).toBeVisible();
+  await expect(help).toHaveText([message]);
+  await page.getByRole('tab', { name: 'Подробно', exact: true }).click();
+  await expect(studyHelp).toBeVisible();
+
+  const search = page.getByRole('searchbox');
+  await search.fill('коронарный кальций');
+  await expect(page.locator('#study')).toHaveAttribute('data-src', 'templates/ct-coronary-calcium.md');
+  await expect(studyHelp).toBeVisible();
+  await expect(help).toHaveText([message]);
+  const helpBox = await studyHelp.boundingBox();
+  expect(helpBox.x).toBeGreaterThanOrEqual(0);
+  expect(helpBox.x + helpBox.width).toBeLessThanOrEqual(page.viewportSize().width);
+
+  const fragment = await page.locator('#study .tpl').getByText('Сканирование выполнено с ЭКГ-синхронизацией без внутривенного контрастирования.', { exact: true }).evaluate(line => {
+    line.scrollIntoView({ block: 'center', behavior: 'instant' });
+    const range = document.createRange();
+    range.selectNodeContents(line);
+    const selection = getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return selection.toString().trim();
+  });
+  expect(fragment).toBeTruthy();
+  await page.getByRole('button', { name: /Поправить/ }).click();
+  await expect(page.getByLabel('Текст для Яндекс Формы')).toHaveValue(fragment);
+  await page.getByRole('button', { name: 'Отмена', exact: true }).click();
+
+  await search.fill('переломы');
+  await expect(studyHelp).toBeVisible();
+  await page.getByRole('link', { name: /Открыть конструктор переломов/ }).click();
+  await expect(help).toHaveText([message]);
+});
+
 test('прямая ссылка открывает выбранную вкладку с доступными кнопками', async ({ page }) => {
   await page.goto(brainProtocol);
   await expect(page.getByRole('heading', { name: 'КТ головного мозга' })).toBeVisible();
@@ -208,6 +248,7 @@ test('протокол и заключение копируются отдель
   await expect.poll(clipboard).toContain(finding);
   const protocol = await clipboard();
   expect(protocol).toContain('Рекомендации: контрольная маммография через 12 месяцев.');
+  expect(protocol).not.toContain('Нашли ошибку');
   expect(protocol).not.toMatch(/заключение:/i);
 
   await page.getByRole('button', { name: 'Скопировать заключение', exact: true }).click();
