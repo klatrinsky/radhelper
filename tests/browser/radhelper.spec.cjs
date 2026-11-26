@@ -59,6 +59,76 @@ test('заполнение размеров обновляет описание 
   await expect(conclusion).toContainText('Вентрикуломегалия (индекс Эванса 0,32).', { useInnerText: true });
 });
 
+test('атлас GCA и схема Эванса загружаются при открытии своей подсказки', async ({ page }) => {
+  const imageRequests = [];
+  page.on('request', request => {
+    const path = new URL(request.url()).pathname;
+    if (/^\/img\/(gca-ct\.webp|evans-index\.svg)$/.test(path)) imageRequests.push(path);
+  });
+  await page.goto(brainProtocol);
+  const atlas = page.locator('.gca-figure img');
+  const evans = page.locator('#evans-guide img');
+  await expect(atlas).toHaveJSProperty('src', '');
+  await expect(evans).toHaveJSProperty('src', '');
+  expect(imageRequests).toEqual([]);
+
+  const summary = page.getByText('Степени атрофии по GCA на КТ', { exact: true });
+  await summary.click();
+  await expect(atlas).toHaveJSProperty('naturalWidth', 1773);
+  await expect(evans).toHaveJSProperty('src', '');
+  await page.getByRole('button', { name: 'Увеличить рисунок GCA' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Увеличенный рисунок GCA на КТ' });
+  await expect(dialog.locator('img')).toHaveJSProperty('naturalWidth', 1773);
+  await dialog.getByRole('button', { name: 'Закрыть' }).click();
+  await summary.click();
+  await summary.click();
+  await expect(atlas).toBeVisible();
+
+  await page.getByRole('button', { name: 'Как измерить индекс Эванса?' }).click();
+  await expect.poll(() => evans.evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
+  expect(imageRequests).toEqual(['/img/gca-ct.webp', '/img/evans-index.svg']);
+});
+
+test('памятка лаборанта загружает только свои иллюстрации при открытии', async ({ page }) => {
+  const imageRequests = [];
+  page.on('request', request => {
+    const path = new URL(request.url()).pathname;
+    if (/^\/img\/(retrieve-|topo-|roi-)/.test(path)) imageRequests.push(path);
+  });
+  await page.goto('/?lab');
+  const retrieve = page.locator('#retrieve img').first();
+  const roi = page.locator('#roi img').first();
+  await expect(retrieve).toHaveJSProperty('src', '');
+  await expect(roi).toHaveJSProperty('src', '');
+  expect(imageRequests).toEqual([]);
+
+  await page.getByRole('button', { name: 'Как подтянуть старое исследование' }).click();
+  await expect.poll(() => retrieve.evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
+  await expect(roi).toHaveJSProperty('src', '');
+  expect(imageRequests).toContain('/img/retrieve-1.jpg');
+  expect(imageRequests.every(path => path.startsWith('/img/retrieve-'))).toBe(true);
+});
+
+test('вложенная подсказка ждёт открытия всех родительских разделов', async ({ page }) => {
+  await page.route('**/ru/knee-jsw.md', route => route.fulfill({
+    contentType: 'text/plain; charset=utf-8', body: '# Суставная щель\n\n![Схема суставной щели](img/evans-index.svg)',
+  }));
+  await page.route('**/ru/kellgren.md', route => route.fulfill({
+    contentType: 'text/plain; charset=utf-8', body: '# Степени артроза\n\n![Рентгенограмма колена](img/kellgren-knee/kl-1.jpg)',
+  }));
+  await page.goto('/?protocol=xr-knee');
+  const hints = page.locator('.study-hints');
+  const first = hints.getByAltText('Схема суставной щели');
+  const second = hints.getByAltText('Рентгенограмма колена');
+  await expect(first).toHaveJSProperty('src', '');
+  await expect(second).toHaveJSProperty('src', '');
+  await hints.locator(':scope > summary').click();
+  await expect(first).toHaveAttribute('src', 'img/evans-index.svg');
+  await expect(second).toHaveJSProperty('src', '');
+  await hints.getByText('Степени артроза', { exact: true }).click();
+  await expect(second).toHaveAttribute('src', 'img/kellgren-knee/kl-1.jpg');
+});
+
 test('протокол и заключение копируются отдельно в буфер обмена', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/?protocol=mmg-ds');

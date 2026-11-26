@@ -627,7 +627,7 @@ if (window.RH_LAB) {
       if (ol) { flushP(); if (ltag !== "ol") flushL(); ltag = "ol"; list.push(ol[1]); continue; }
       // картинка: ![подпись](img/файл.svg) — отдельной строкой
       const im = t.match(/^!\[([^\]]*)\]\(((?:img\/|https:\/\/)[^)\s]+)\)$/);
-      if (im) { flush(); html += '<img class="pic" src="' + esc(im[2]) + '" alt="' + esc(im[1]) + '" loading="lazy">'; continue; }
+      if (im) { flush(); html += '<img class="pic" data-hint-src="' + esc(im[2]) + '" alt="' + esc(im[1]) + '" loading="lazy">'; continue; }
       if (/^`[^`]+`$/.test(t)) { flush(); html += '<code class="formula">' + esc(t.slice(1, -1)) + "</code>"; continue; }
       if (/^(Источник|Radiopaedia):/.test(t)) { flush(); html += '<p class="src">' + inline(t) + "</p>"; continue; }
       flushL(); para.push(t);
@@ -637,6 +637,18 @@ if (window.RH_LAB) {
     out.html = html.replace(/(?:<img class="pic"[^>]*>){2,}/g, m => '<div class="pics">' + m + "</div>");
     return out;
   }
+
+  function loadHintImages(root) {
+    root.querySelectorAll("img[data-hint-src]").forEach(image => {
+      if (image.closest("details:not([open]), [hidden]")) return;
+      image.src = image.dataset.hintSrc;
+      delete image.dataset.hintSrc;
+    });
+  }
+
+  document.addEventListener("toggle", event => {
+    if (event.target instanceof HTMLDetailsElement && event.target.open) loadHintImages(event.target);
+  }, true);
 
   q.addEventListener("input", () => {
     if (!document.body.classList.contains("protocol-view")) return;
@@ -667,7 +679,11 @@ if (window.RH_LAB) {
       const d = parse(t);
       // «Для:» врач (по умолчанию) / лаборант / оба — на чужом входе раздел не показываем
       if (d.who !== "оба" && d.who !== (window.RH_LAB ? "лаборант" : "врач")) return;
-      if (f === "about.md") { noteEl.innerHTML = '<div class="note">' + d.html + "</div>"; return; }
+      if (f === "about.md") {
+        noteEl.innerHTML = '<div class="note">' + d.html + "</div>";
+        loadHintImages(noteEl);
+        return;
+      }
       const sec = document.createElement("details");
       sec.className = d.sos ? "sec sos" : "sec";
       if (!d.btn) sec.dataset.nobtn = "1";
@@ -1014,6 +1030,7 @@ if (window.RH_LAB) {
             if (i === 0) d.open = true;
             box.appendChild(d);
           });
+          loadHintImages(box);
         });
       }
 
@@ -1056,7 +1073,7 @@ if (window.RH_LAB) {
       const src = "img/" + folder + "/kl-" + grade + ".jpg";
       const alt = "Рентгенограмма " + anatomy + ", степень " + grade;
       return '<figure><button type="button" class="kl-zoom" aria-haspopup="dialog" aria-label="Увеличить снимок: степень ' + grade +
-        '"><img src="' + src + '" loading="lazy" alt="' + alt + '"></button><figcaption>Степень ' + grade + '</figcaption></figure>';
+        '"><img data-hint-src="' + src + '" loading="lazy" alt="' + alt + '"></button><figcaption>Степень ' + grade + '</figcaption></figure>';
     }).join("");
     addImageGuide(el, "Сравнить степени Келлгрена — Лоуренса", figures, source);
   }
@@ -1072,7 +1089,7 @@ if (window.RH_LAB) {
     ];
     const figures = images.map(([file, caption]) =>
       '<figure><button type="button" class="kl-zoom" aria-haspopup="dialog" aria-label="Увеличить: ' +
-      caption + '"><img src="img/postop/' + file + '" loading="lazy" alt="' + caption +
+      caption + '"><img data-hint-src="img/postop/' + file + '" loading="lazy" alt="' + caption +
       '"></button><figcaption>' + caption + '</figcaption></figure>').join("");
     const source = hip
       ? 'J. Vanrusselt и соавт. <a href="https://doi.org/10.1007/s13244-015-0438-5" target="_blank" rel="noopener">Insights into Imaging, 2015, рис. 7, 4 и 6</a>.'
@@ -1088,7 +1105,7 @@ if (window.RH_LAB) {
     ];
     const figures = images.map(([file, caption]) =>
       '<figure><button type="button" class="kl-zoom" aria-haspopup="dialog" aria-label="Увеличить: ' +
-      caption + '"><img src="img/temporal/' + file + '" loading="lazy" alt="' + caption +
+      caption + '"><img data-hint-src="img/temporal/' + file + '" loading="lazy" alt="' + caption +
       '"></button><figcaption>' + caption + '</figcaption></figure>').join("");
     const source = 'P. Touska, S. E. J. Connor. <a href="https://link.springer.com/article/10.1007/s00330-024-11021-x#Fig1" target="_blank" rel="noopener">European Radiology, 2025, рис. 1</a> и <a href="https://link.springer.com/article/10.1007/s00330-024-11021-x#Fig3" target="_blank" rel="noopener">рис. 3</a>. ' +
       'P. Feraco, S. Piccinini, C. Gagliardo. <a href="https://link.springer.com/article/10.1007/s11547-021-01387-z#Fig3" target="_blank" rel="noopener">La Radiologia Medica, 2021, рис. 3</a>.';
@@ -1109,7 +1126,8 @@ if (window.RH_LAB) {
       button.addEventListener("click", () => {
         const image = button.querySelector("img");
         dialog.querySelector("strong").textContent = button.parentElement.querySelector("figcaption").textContent;
-        enlarged.src = image.getAttribute("src");
+        const src = image.getAttribute("src") || image.dataset.hintSrc;
+        if (enlarged.getAttribute("src") !== src) enlarged.src = src;
         enlarged.alt = image.alt;
         dialog.showModal();
       });
@@ -1123,7 +1141,7 @@ if (window.RH_LAB) {
   function addGcaGuide(el) {
     const caption = "Корковая атрофия от 0 до 3 степени слева направо. Аксиальные срезы бесконтрастной КТ.";
     const figure = '<figure class="gca-figure"><button type="button" class="kl-zoom" aria-haspopup="dialog" aria-label="Увеличить рисунок GCA">' +
-      '<img src="img/gca-ct.png" width="1773" height="691" loading="lazy" alt="' + caption + '"></button>' +
+      '<img data-hint-src="img/gca-ct.webp" width="1773" height="691" loading="lazy" alt="' + caption + '"></button>' +
       '<figcaption>' + caption + '</figcaption></figure>';
     const source = '© 2023 Brugnara и соавт. <a href="https://link.springer.com/article/10.1007/s00330-023-10107-2#Fig1" ' +
       'target="_blank" rel="noopener">European Radiology, рис. 1</a>. Показан верхний ряд оригинала.';
@@ -1149,7 +1167,7 @@ if (window.RH_LAB) {
     panel.id = "evans-guide";
     panel.className = "measure-help";
     panel.hidden = true;
-    panel.innerHTML = '<img src="img/evans-index.svg" width="210" height="175" loading="lazy" alt="Схема аксиального среза с линиями A и B">' +
+    panel.innerHTML = '<img data-hint-src="img/evans-index.svg" width="210" height="175" loading="lazy" alt="Схема аксиального среза с линиями A и B">' +
       '<div class="measure-help-copy"><p><strong>Индекс Эванса = A / B</strong></p>' +
       '<p><b>A</b> — максимальная ширина передних рогов боковых желудочков.</p>' +
       '<p><b>B</b> — максимальный внутренний поперечник черепа на том же аксиальном срезе.</p>' +
@@ -1158,6 +1176,7 @@ if (window.RH_LAB) {
     button.addEventListener("click", () => {
       panel.hidden = !panel.hidden;
       button.setAttribute("aria-expanded", String(!panel.hidden));
+      if (!panel.hidden) loadHintImages(panel);
     });
   }
 

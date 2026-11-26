@@ -272,7 +272,12 @@ test("КТ височных костей: галерея открывает ло
   dialog.close = () => { dialog.open = false; };
   assert.equal(guide.open, false);
   assert.equal(guide.querySelectorAll(".kl-zoom").length, 3);
-  for (const image of guide.querySelectorAll(".kl-zoom img")) {
+  const images = guide.querySelectorAll(".kl-zoom img");
+  images.forEach(image => assert.equal(image.hasAttribute("src"), false));
+  const opened = new Promise(resolve => guide.addEventListener("toggle", resolve, { once: true }));
+  guide.open = true;
+  await opened;
+  for (const image of images) {
     const src = image.getAttribute("src");
     assert.match(src, /^img\/temporal\//);
     image.closest("button").click();
