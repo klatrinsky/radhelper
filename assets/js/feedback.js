@@ -1,4 +1,4 @@
-/* «Поправить»: выделение открывает кнопку Яндекс Формы. В форму передаются выделенный текст и его источник.
+/* «Поправить»: пользователь проверяет фрагмент перед открытием Яндекс Формы.
    Ответы формы приходят автору на почту (включается в настройках формы: «Уведомления» / «Письмо»).
 
    Настройка — только тут:
@@ -35,6 +35,25 @@
   btn.hidden = true;
   document.body.appendChild(btn);
 
+  const dialog = document.createElement("dialog");
+  dialog.className = "fb-review";
+  dialog.setAttribute("aria-labelledby", "fb-review-title");
+  dialog.setAttribute("aria-describedby", "fb-review-help");
+  dialog.innerHTML = `
+    <form method="dialog">
+      <h2 id="fb-review-title" tabindex="-1" autofocus>Проверьте фрагмент</h2>
+      <p id="fb-review-help">Удалите ФИО, даты рождения и другие данные, по которым можно узнать пациента. Чтобы открыть форму без фрагмента, очистите поле.</p>
+      <label for="fb-review-text">Текст для Яндекс Формы</label>
+      <textarea id="fb-review-text" rows="5" maxlength="${MAX_FRAGMENT_LENGTH}" autocomplete="off" spellcheck="false"></textarea>
+      <div class="fb-review-actions">
+        <button type="submit">Отмена</button>
+        <button type="button" class="fb-continue">Открыть Яндекс Форму</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dialog);
+
+  const reviewText = dialog.querySelector("textarea");
+  let reviewSource = "";
   let source = null, fragment = "";                  // сохраняем выделение до нажатия
 
   // Откуда кусок: файл шаблона и вкладка — или файл карточки
@@ -55,6 +74,7 @@
   function hide() { btn.hidden = true; source = null; fragment = ""; }
 
   function update() {
+    if (dialog.open) return hide();
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !sel.rangeCount) return hide();
     const range = sel.getRangeAt(0);
@@ -89,11 +109,24 @@
 
   btn.addEventListener("click", () => {
     if (!source) return;
-    const url = new URL(FORM);
-    url.searchParams.set(SOURCE_FIELD, source);
-    url.searchParams.set(FRAGMENT_FIELD, fragment);
-    window.open(url.toString(), "_blank", "noopener,noreferrer");
+    reviewSource = source;
+    reviewText.value = fragment;
+    dialog.showModal();
     window.getSelection().removeAllRanges();
     hide();
+  });
+
+  dialog.querySelector(".fb-continue").addEventListener("click", () => {
+    const text = reviewText.value.trim();
+    const url = new URL(FORM);
+    url.searchParams.set(SOURCE_FIELD, reviewSource);
+    if (text) url.searchParams.set(FRAGMENT_FIELD, text);
+    window.open(url.toString(), "_blank", "noopener,noreferrer");
+    dialog.close();
+  });
+
+  dialog.addEventListener("close", () => {
+    reviewText.value = "";
+    reviewSource = "";
   });
 })();

@@ -1,5 +1,7 @@
 # не публиковать на сайте (git archive в pages.yml их пропускает)
 tests/ export-ignore
+playwright.config.cjs export-ignore
+.github/ export-ignore
 package.json export-ignore
 package-lock.json export-ignore
 .gitignore export-ignore

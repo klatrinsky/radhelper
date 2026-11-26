@@ -2,12 +2,14 @@
   "name": "radhelper",
   "private": true,
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "test:browser": "playwright test"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.1",
     "jsdom": "26.1.0"
   }
 }

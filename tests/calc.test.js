@@ -167,6 +167,12 @@ function template(file) {
   };
 }
 
+function templateToggle(el, prefix) {
+  const toggle = [...el.querySelectorAll(".tg")].find(node => node.firstElementChild?.textContent.startsWith(prefix));
+  assert.ok(toggle, prefix);
+  return toggle;
+}
+
 test("вступление протокола сохраняет методику исследования и переходит к описанию", () => {
   const protocol = file => template(file).tpl.text("protocol");
   assert.match(protocol("ct-spine-lumbar.md"), /^Поясничный лордоз сохранён\./);
@@ -181,21 +187,18 @@ test("вступление протокола сохраняет методик�
 });
 
 test("КТ почек: нативные находки, Bosniak и фазовая оценка копируются в нужном варианте", () => {
-  const toggle = (el, prefix) => [...el.querySelectorAll(".tg")]
-    .find(node => node.firstElementChild?.textContent.startsWith(prefix));
-
   const native = template("ct-kidneys.md");
   const nativeProtocol = () => native.tpl.text("protocol");
   assert.match(nativeProtocol(), /Утолщения стенок ЧЛС более 3 мм не выявлено/);
   assert.match(nativeProtocol(), /Кальциноз стенок почечных артерий не выявлен/);
   assert.doesNotMatch(nativeProtocol(), /Bosniak|кортикомедуллярн|вымывание/i);
-  const stone = toggle(native.el, "Конкременты в чашечно-лоханочных системах");
+  const stone = templateToggle(native.el, "Конкременты в чашечно-лоханочных системах");
   stone.click();
   const inputs = stone.querySelectorAll("input");
   ["правой почки (нижняя чашечка)", "7", "610"].forEach((value, i) => { inputs[i].value = value; });
   assert.match(nativeProtocol(), /Конкремент в чашечно-лоханочной системе правой почки \(нижняя чашечка\) размером 7 мм, плотностью 610 HU/);
   assert.doesNotMatch(nativeProtocol(), /Конкременты в чашечно-лоханочных системах не определяются/);
-  assert.equal(native.tpl.text("conclusion"), "");
+  assert.equal(native.tpl.text("conclusion"), "Конкременты в мочеточниках не выявлены.\nЧЛС не расширены.\nМочеточники не расширены.");
 
   const contrast = template("ct-kidneys-contrast.md");
   const contrastProtocol = () => contrast.tpl.text("protocol");
@@ -208,7 +211,7 @@ test("КТ почек: нативные находки, Bosniak и фазова�
   arterial.dispatchEvent(new W.Event("change"));
   assert.match(contrastProtocol(), /В артериальную фазу дефектов накопления контрастного вещества не выявлено/);
 
-  const cyst = toggle(contrast.el, "Сложные кисты почек");
+  const cyst = templateToggle(contrast.el, "Сложные кисты почек");
   cyst.click();
   const category = cyst.querySelector("select");
   category.value = "IIF";
@@ -216,12 +219,28 @@ test("КТ почек: нативные находки, Bosniak и фазова�
   const cystInputs = cyst.querySelectorAll("input");
   ["слева в верхнем сегменте", "18", "указана в заключении"].forEach((value, i) => { cystInputs[i].value = value; });
   assert.match(contrastProtocol(), /Сложная киста почки слева в верхнем сегменте размером 18 мм, Bosniak IIF, оценка риска указана в заключении/);
-  assert.equal(contrast.tpl.text("conclusion"), "");
+  assert.equal(contrast.tpl.text("conclusion"), "ЧЛС не расширены.\nМочеточники не расширены.");
 
   const short = template("ct-kidneys-short.md").tpl.text("protocol");
   assert.match(short, /Кисты и объёмные образования почек не выявлены/);
   assert.match(short, /Костной деструкции в телах позвонков в зоне исследования не выявлено/);
   assert.doesNotMatch(short, /кортикомедуллярн|HU|вымывание/i);
+});
+
+test("КТ почек: автоматическое заключение сохраняет норму по остальным участкам", () => {
+  for (const [file, adrenal, ureter] of [
+    ["ct-kidneys.md", "Объёмных образований надпочечников", "Мочеточники не расширены."],
+    ["ct-kidneys-contrast.md", "Объёмных образований надпочечников", "Мочеточники не расширены."],
+    ["ct-kidneys-short.md", "Надпочечники без особенностей.", "Мочеточники не расширены."],
+  ]) {
+    const { el, tpl } = template(file);
+    const normal = tpl.text("conclusion");
+    assert.match(normal, /ЧЛС не расширены/);
+    templateToggle(el, adrenal).click();
+    assert.equal(tpl.text("conclusion"), normal, file);
+    templateToggle(el, ureter).click();
+    assert.equal(tpl.text("conclusion"), normal.split("\n").filter(line => line !== ureter).join("\n"), file);
+  }
 });
 
 test("Агатстон: сумма, границы CAC-DRS и число артерий в описании и заключении", () => {
@@ -379,6 +398,28 @@ test("КТА ног: правый и левый блоки отделены в �
   }
 });
 
+test("КТА ног: норма относится к аорте и ветвям, блок аневризмы доступен после удаления эктазии", () => {
+  const normal = /Аорта и её ветви: без гемодинамически значимых стенозов и окклюзий/;
+  for (const [file, branches, aorta] of [
+    ["cta-legs.md", "Чревный ствол, верхняя", "(инфраренальный сегмент) не расширена"],
+    ["cta-legs-short.md", "без гемодинамически значимых стенозов", "проходима, аневризм нет"],
+  ]) {
+    const { el, tpl } = template(file);
+    assert.match(tpl.text("conclusion"), normal);
+    templateToggle(el, branches).click();
+    assert.doesNotMatch(tpl.text("conclusion"), normal);
+    assert.match(tpl.text("conclusion"), /Стеноз устья правой почечной артерии/);
+    templateToggle(el, aorta).click();
+    assert.match(tpl.text("protocol"), /инфраренальная веретенообразная аневризма/);
+    assert.match(tpl.text("conclusion"), /Инфраренальная веретенообразная аневризма/);
+    if (file === "cta-legs.md") {
+      assert.match(tpl.text("protocol"), /Длина шейки[\s\S]*Диаметр ОБА/);
+      assert.match(tpl.text("conclusion"), /КТ-признаков разрыва нет/);
+    }
+    assert.doesNotMatch(el.textContent, /эктази/i);
+  }
+});
+
 test("Рентгенография ОГК: сторона релаксации синхронизируется с заключением", () => {
   const { el, tpl } = template("xr-chest-full.md");
   const toggles = () => [...el.querySelectorAll(".tg")];
@@ -391,7 +432,7 @@ test("Рентгенография ОГК: сторона релаксации �
   assert.equal((tpl.text().match(/Релаксация левого купола диафрагмы\./g) || []).length, 2);
 });
 
-test("КТ ОГК: фраза о свежих изменениях исчезает при находке и возвращается после сброса", () => {
+test("КТ ОГК: фраза о свежих изменениях зависит от находок в паренхиме лёгких", () => {
   const fresh = /свежих (?:очаговых и )?инфильтративных изменений/gi;
   for (const [file, option, count] of [
     ["ct-chest.md", "+ консолидация", 2],
@@ -399,8 +440,7 @@ test("КТ ОГК: фраза о свежих изменениях исчеза�
     ["ct-cap.md", "+ очаги лёгких", 1],
   ]) {
     const { el, tpl } = template(file);
-    const toggle = [...el.querySelectorAll(".tg")].find(node => node.firstElementChild.textContent === option);
-    assert.ok(toggle, file);
+    const toggle = templateToggle(el, option);
     assert.equal(tpl.text().match(fresh)?.length, count, file);
     toggle.click();
     assert.equal(tpl.text().match(fresh), null, file);
@@ -408,20 +448,28 @@ test("КТ ОГК: фраза о свежих изменениях исчеза�
     assert.equal(tpl.text().match(fresh)?.length, count, file);
   }
 
-  const { tpl, cycle, type } = template("ct-chest.md");
+  const { el, tpl, cycle, type } = template("ct-chest.md");
   cycle("Сердце");
-  assert.equal(tpl.text().match(fresh), null);
-  cycle("Сердце");
+  templateToggle(el, "+ бронхоэктазы").click();
+  templateToggle(el, "Внутригрудные лимфатические узлы не увеличены").click();
   assert.equal(tpl.text().match(fresh)?.length, 2);
   for (const value of ["111", ""]) {
     type("L1 HU", "110");
-    assert.equal(tpl.text().match(fresh), null);
+    assert.equal(tpl.text().match(fresh)?.length, 2);
     assert.match(tpl.text("protocol"), /косвенные МСКТ-признаки остеопороза/);
     assert.doesNotMatch(tpl.text("conclusion"), /остеопороз|денситометрия/i);
     type("L1 HU", value);
     assert.equal(tpl.text().match(fresh)?.length, 2);
     assert.doesNotMatch(tpl.text(), /остеопороз/i);
   }
+
+  const short = template("ct-chest-short.md");
+  templateToggle(short.el, "Плеврального выпота нет").click();
+  assert.equal(short.tpl.text().match(fresh)?.length, 2);
+
+  const combined = template("ct-cap.md");
+  templateToggle(combined.el, "Дефектов контрастирования лёгочных артерий").click();
+  assert.equal(combined.tpl.text().match(fresh)?.length, 1);
 
   const screening = template("ct-chest-ldct.md");
   const findings = screening.el.querySelector(".tg");
@@ -431,6 +479,100 @@ test("КТ ОГК: фраза о свежих изменениях исчеза�
   assert.equal(screening.tpl.missing().length, 2);
   findings.click();
   assert.match(screening.tpl.text(), /Lung-RADS 1/);
+});
+
+test("Сборная КТ: общая норма исчезает при находке, ручное заключение остаётся доступно", () => {
+  const normal = /КТ-признаков объёмных образований, лимфаденопатии и вторичных изменений/;
+  for (const [option, finding] of [
+    ["Внутригрудные, надключичные и подмышечные", /Внутригрудная лимфаденопатия/],
+    ["очаговых образований нет.", /Образование .* печени/],
+    ["Дефектов контрастирования лёгочных артерий", /тромбоэмболии/],
+  ]) {
+    const { el, tpl } = template("ct-cap.md");
+    assert.match(tpl.text("conclusion"), normal);
+    templateToggle(el, option).click();
+    assert.doesNotMatch(tpl.text("conclusion"), normal);
+    assert.match(tpl.text("conclusion"), finding);
+    const manual = templateToggle(el, "+ итог");
+    assert.equal(manual.closest(".ln").hidden, false);
+    manual.click();
+    manual.querySelector("input").value = "Заключение врача.";
+    assert.match(tpl.text("conclusion"), /Заключение врача\./);
+  }
+});
+
+test("КТ брюшной полости: свободные жидкость и газ выбираются независимо", () => {
+  for (const file of ["ct-abdomen.md", "ct-abdomen-contrast.md"]) {
+    const { el, tpl } = template(file);
+    const protocol = () => tpl.text("protocol");
+    const normal = /Свободные пространства брюшной полости без особенностей/;
+    assert.match(protocol(), normal);
+    assert.match(tpl.text("conclusion"), /острой патологии/);
+    const liquid = templateToggle(el, "+ свободная жидкость");
+    const gas = templateToggle(el, "+ свободный газ");
+    liquid.click();
+    liquid.querySelector("input").value = "в малом тазу";
+    assert.match(protocol(), /Свободная жидкость в малом тазу/);
+    assert.doesNotMatch(protocol(), /Свободный газ/);
+    assert.doesNotMatch(protocol(), normal);
+    gas.click();
+    gas.querySelector("input").value = "под диафрагмой";
+    assert.match(protocol(), /Свободная жидкость в малом тазу\. Свободный газ под диафрагмой\./);
+    liquid.click();
+    assert.match(protocol(), /Свободный газ под диафрагмой/);
+    assert.doesNotMatch(protocol(), /Свободная жидкость/);
+    assert.doesNotMatch(tpl.text("conclusion"), /острой патологии/);
+    gas.click();
+    assert.match(protocol(), normal);
+    assert.match(tpl.text("conclusion"), /острой патологии/);
+  }
+});
+
+test("КТ поясничного отдела: выбор оценки стеноза не зависит от находки в диске", () => {
+  const { el, tpl, type } = template("ct-spine-lumbar.md");
+  const level = "L4–L5";
+  const measurement = el.querySelector('input[data-name="S L4–L5"]');
+  const disk = [...el.querySelectorAll(".ln")].find(line => line.textContent.startsWith(level + ":")).querySelector(".tg");
+  const stenosis = templateToggle(el, "+ стеноз канала " + level);
+  const conclusion = () => tpl.text("conclusion");
+  assert.ok(measurement.closest("[hidden]"));
+  disk.click();
+  assert.ok(measurement.closest("[hidden]"));
+  assert.match(conclusion(), /Протрузия диска L4–L5/);
+  stenosis.click();
+  assert.equal(measurement.closest("[hidden]"), null);
+  type("S L4–L5", "75");
+  assert.match(conclusion(), /Относительный стеноз позвоночного канала на уровне L4–L5 \(площадь дурального мешка 75 мм²\)/);
+  disk.click();
+  assert.match(conclusion(), /Экструзия диска L4–L5/);
+  type("S L4–L5", "74");
+  assert.match(conclusion(), /Абсолютный стеноз позвоночного канала на уровне L4–L5/);
+  assert.doesNotMatch(conclusion(), /стеноз позвоночного канала на уровне L3–L4/);
+  stenosis.click();
+  assert.ok(measurement.closest("[hidden]"));
+  assert.doesNotMatch(conclusion(), /стеноз позвоночного канала на уровне L4–L5/);
+  assert.match(conclusion(), /Экструзия диска L4–L5/);
+  stenosis.click();
+  assert.match(conclusion(), /Абсолютный стеноз позвоночного канала на уровне L4–L5/);
+});
+
+test("Шаблоны позвоночника описывают компрессионный перелом без блока оценки давности", () => {
+  for (const [file, prefix] of [
+    ["ct-spine-lumbar.md", "Высота тел позвонков сохранена"],
+    ["ct-spine-thoracic.md", "Высота тел позвонков сохранена"],
+    ["xr-spine-lumbar.md", "Высота тел позвонков сохранена"],
+    ["xr-spine-thoracic.md", "Высота тел позвонков сохранена"],
+    ["xr-spine-thoracolumbar.md", "Высота тел позвонков сохранена"],
+  ]) {
+    const { el, tpl, type } = template(file);
+    assert.doesNotMatch(el.textContent, /давност|свежий перелом|консолидированный перелом/i, file);
+    templateToggle(el, prefix).click();
+    type("h 1", "15");
+    type("H 1", "25");
+    assert.match(tpl.text("protocol"), /компрессионный перелом/i, file);
+    assert.match(tpl.text("conclusion"), /Компрессионный перелом/i, file);
+    assert.doesNotMatch(tpl.text(), /давност|свежий перелом|консолидированный перелом/i, file);
+  }
 });
 
 test("конструктор переломов: формулировка диагноза объединяет суставное вовлечение и вколочение", () => {

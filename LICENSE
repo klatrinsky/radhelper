@@ -23,12 +23,11 @@ Attribution-NonCommercial 4.0 International (CC BY-NC 4.0).
 
 Передача данных и аналитика
 
-RadHelper является статическим сайтом, однако это само по себе не
-означает отсутствия передачи данных внешним сервисам. На сайте
-используется Яндекс Метрика, которая может собирать техническую
-информацию о посещениях и сведения о взаимодействии пользователей
-с сайтом в соответствии с условиями сервиса. Поэтому утверждать,
-что данные посетителей никуда не передаются, было бы некорректно.
+Яндекс Метрика получает технические данные для подсчёта посещений.
+Вебвизор отключён. Содержимое протоколов, поисковые запросы и значения
+полей не передаются в аналитику. При переходе в Яндекс Форму через кнопку
+«Поправить» в форму подставляются источник замечания и фрагмент, который
+пользователь оставил после проверки.
 Не вводите в формы сайта персональные данные пациентов.
 
 Краткое изложение лицензии: https://creativecommons.org/licenses/by-nc/4.0/deed.ru
@@ -38,6 +37,7 @@ Original RadHelper content and source code are licensed under
 Creative Commons Attribution-NonCommercial 4.0 International.
 **Commercial use is not permitted without separate permission from the copyright holder.**
 Third-party materials are subject to their respective terms.
-The static website uses Yandex Metrica analytics; visitor data may be
-transmitted to external services.
+Yandex Metrica receives technical data to count visits. When users proceed
+to Yandex Forms, the form receives the feedback source and any text they
+keep after review.
 https://creativecommons.org/licenses/by-nc/4.0/

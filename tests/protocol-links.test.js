@@ -123,8 +123,8 @@ test("кнопки маммографии раздельно копируют п
 
 test("КТ почек: можно вернуться к автоматическому заключению и сохранить ручной текст", async t => {
   for (const [id, normal] of [
-    ["ct-kidneys", "Конкременты в почках и мочеточниках не выявлены. ЧЛС и мочеточники не расширены."],
-    ["ct-kidneys-contrast", "Объёмные образования почек не выявлены. ЧЛС и мочеточники не расширены."],
+    ["ct-kidneys", "Конкременты в почках не выявлены.\nКонкременты в мочеточниках не выявлены.\nЧЛС не расширены.\nМочеточники не расширены."],
+    ["ct-kidneys-contrast", "Объёмные образования почек не выявлены.\nЧЛС не расширены.\nМочеточники не расширены."],
   ]) {
     const w = await openSite({ query: "?protocol=" + id });
     t.after(() => w.close());
@@ -186,7 +186,8 @@ test("КТ почек: можно вернуться к автоматическ
     const kidneys = [...w.document.querySelectorAll(".tpl .tg")]
       .find(toggle => toggle.firstElementChild?.textContent.startsWith("Почки обычных размеров"));
     kidneys.click();
-    assert.ok(!$(".tpl-conclusion").textContent.includes(normal));
+    conclusion.click();
+    assert.equal(clipboard, normal);
     choose(1);
     conclusion.click();
     assert.equal(clipboard, "Текст заключения врача.");
@@ -281,4 +282,33 @@ test("КТ височных костей: галерея открывает ло
     assert.equal(dialog.open, false);
   }
   assert.equal(w.location.search, "?protocol=ct-temporal");
+});
+
+test("КТ височных костей: описание хирургических ориентиров сохраняет нормальное заключение", async t => {
+  const w = await openSite({ query: "?protocol=ct-temporal" });
+  t.after(() => w.close());
+  const $ = selector => w.document.querySelector(selector);
+  const toggles = [...w.document.querySelectorAll("#study .tpl .tg")];
+  const find = prefix => toggles.find(toggle => toggle.firstElementChild?.textContent.startsWith(prefix));
+  let clipboard;
+  w.document.execCommand = () => {
+    clipboard = $("textarea[readonly]").value;
+    return true;
+  };
+  const copyConclusion = $(".copy-conclusion");
+  const normal = "МСКТ-признаков патологических изменений височных костей не выявлено.";
+  copyConclusion.click();
+  assert.equal(clipboard, normal);
+  for (const side of ["справа", "слева"]) {
+    const landmarks = find("+ хирургические ориентиры " + side);
+    landmarks.click();
+    landmarks.querySelector("input").value = "без особенностей";
+  }
+  $(".copy").click();
+  assert.equal((clipboard.match(/Канал лицевого нерва и сосудистые ориентиры: без особенностей/g) || []).length, 2);
+  copyConclusion.click();
+  assert.equal(clipboard, normal);
+  find("Наружный слуховой проход свободен").click();
+  copyConclusion.click();
+  assert.equal(clipboard, "");
 });
