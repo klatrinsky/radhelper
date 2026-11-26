@@ -7,6 +7,7 @@ const { openSite, read } = require("./env");
 
 let W, C;
 test.before(async () => { W = await openSite(); C = W.RH_CALC; });
+test.after(() => W?.close());
 
 const f = (name, ...a) => C[name].f(...a);
 const pick = (name, x) => C[name].pick(x);
@@ -166,6 +167,92 @@ function template(file) {
   };
 }
 
+test("вступление протокола сохраняет методику исследования и переходит к описанию", () => {
+  const protocol = file => template(file).tpl.text("protocol");
+  assert.match(protocol("ct-spine-lumbar.md"), /^Поясничный лордоз сохранён\./);
+  assert.match(protocol("ct-pelvis-f.md"), /размеры \[__\] x \[__\] x \[__\] мм/);
+  assert.match(protocol("ct-perfusion.md"), /^Применено внутривенное болюсное контрастирование\. Зона сканирования — 20 мм на уровне базальных ядер\. Постобработка syngo\.via/);
+  assert.match(protocol("ct-voiding-urethrography.md"), /Отсроченное сканирование выполнено на 10-й минуте, микционная фаза — в положении на правом боку/);
+  assert.match(protocol("xr-chest-supine.md"), /^Снимки выполнены в прямой и боковой проекциях в горизонтальном положении пациента\. Лёгочные поля/);
+  const combined = protocol("xr-spine-thoracolumbar.md");
+  assert.equal((combined.match(/в прямой и боковой проекциях/g) || []).length, 1);
+  assert.match(combined, /Грудной отдел позвоночника\.\nГрудной кифоз сохранён/);
+  assert.match(combined, /Поясничный отдел позвоночника\.\nПоясничный лордоз сохранён/);
+});
+
+test("КТ почек: нативные находки, Bosniak и фазовая оценка копируются в нужном варианте", () => {
+  const toggle = (el, prefix) => [...el.querySelectorAll(".tg")]
+    .find(node => node.firstElementChild?.textContent.startsWith(prefix));
+
+  const native = template("ct-kidneys.md");
+  const nativeProtocol = () => native.tpl.text("protocol");
+  assert.match(nativeProtocol(), /Утолщения стенок ЧЛС более 3 мм не выявлено/);
+  assert.match(nativeProtocol(), /Кальциноз стенок почечных артерий не выявлен/);
+  assert.doesNotMatch(nativeProtocol(), /Bosniak|кортикомедуллярн|вымывание/i);
+  const stone = toggle(native.el, "Конкременты в чашечно-лоханочных системах");
+  stone.click();
+  const inputs = stone.querySelectorAll("input");
+  ["правой почки (нижняя чашечка)", "7", "610"].forEach((value, i) => { inputs[i].value = value; });
+  assert.match(nativeProtocol(), /Конкремент в чашечно-лоханочной системе правой почки \(нижняя чашечка\) размером 7 мм, плотностью 610 HU/);
+  assert.doesNotMatch(nativeProtocol(), /Конкременты в чашечно-лоханочных системах не определяются/);
+  assert.equal(native.tpl.text("conclusion"), "");
+
+  const contrast = template("ct-kidneys-contrast.md");
+  const contrastProtocol = () => contrast.tpl.text("protocol");
+  assert.match(contrastProtocol(), /В кортикомедуллярную фазу паренхима почек накапливает контрастное вещество симметрично/);
+  assert.match(contrastProtocol(), /Контрастное вещество появляется в ЧЛС своевременно/);
+  assert.match(contrastProtocol(), /На отсроченных изображениях вымывание контрастного вещества симметричное/);
+  assert.doesNotMatch(contrastProtocol(), /в артериальную фазу/i);
+  const arterial = contrast.el.querySelector('select[aria-label="артериальная фаза"]');
+  arterial.selectedIndex = 1;
+  arterial.dispatchEvent(new W.Event("change"));
+  assert.match(contrastProtocol(), /В артериальную фазу дефектов накопления контрастного вещества не выявлено/);
+
+  const cyst = toggle(contrast.el, "Сложные кисты почек");
+  cyst.click();
+  const category = cyst.querySelector("select");
+  category.value = "IIF";
+  category.dispatchEvent(new W.Event("change"));
+  const cystInputs = cyst.querySelectorAll("input");
+  ["слева в верхнем сегменте", "18", "указана в заключении"].forEach((value, i) => { cystInputs[i].value = value; });
+  assert.match(contrastProtocol(), /Сложная киста почки слева в верхнем сегменте размером 18 мм, Bosniak IIF, оценка риска указана в заключении/);
+  assert.equal(contrast.tpl.text("conclusion"), "");
+
+  const short = template("ct-kidneys-short.md").tpl.text("protocol");
+  assert.match(short, /Кисты и объёмные образования почек не выявлены/);
+  assert.match(short, /Костной деструкции в телах позвонков в зоне исследования не выявлено/);
+  assert.doesNotMatch(short, /кортикомедуллярн|HU|вымывание/i);
+});
+
+test("Агатстон: сумма, границы CAC-DRS и число артерий в описании и заключении", () => {
+  const { tpl, type } = template("ct-coronary-calcium.md");
+  const names = ["CAC LM", "CAC LAD", "CAC LCx", "CAC RCA"];
+  const set = values => values.forEach((value, i) => type(names[i], value));
+  const cases = [
+    [["0", "0", "0", "0"], "0", "A0"],
+    [["0", "0,1", "0", "0"], "0,1", "A1/N1"],
+    [["0", "99,999", "0", "0"], "99,999", "A1/N1"],
+    [["99,8", "0,1", "0.1", "0"], "100", "A2/N3"],
+    [["150", "149,99", "0", "0"], "299,99", "A2/N2"],
+    [["299,7", "0,1", "0.1", "0,1"], "300", "A3/N4"],
+  ];
+  assert.equal(tpl.missing("conclusion")[0].label, "CAC LM");
+  for (const [values, sum, category] of cases) {
+    set(values);
+    for (const section of ["protocol", "conclusion"]) {
+      const text = tpl.text(section);
+      assert.ok(text.includes("Суммарный индекс Агатстона — " + sum + "."));
+      assert.ok(text.includes("(CAC-DRS " + category + ")."));
+      assert.equal(tpl.missing(section).length, 0);
+    }
+  }
+  for (const value of ["", "-1", "25x", "1,2.3"]) {
+    type("CAC RCA", value);
+    assert.doesNotMatch(tpl.text("conclusion"), /CAC-DRS A/);
+    assert.equal(tpl.missing("conclusion")[0].label, "CAC RCA");
+  }
+});
+
 test("шаблон КТА БЦА: стеноз попадает в заключение с правильной градацией", () => {
   const t = template("cta-bca-stenosis.md");
   t.cycle("Dмин П");                                                 // «без стенозов» → «стеноз устья …»
@@ -236,6 +323,29 @@ test("DXA: свёрнутые данные сравнения участвуют
   assert.equal(t.tpl.text(), copy);
 });
 
+test("КТ брюшной полости: жировую инволюцию можно исключить из описания поджелудочной", () => {
+  for (const file of ["ct-abdomen.md", "ct-abdomen-contrast.md"]) {
+    const { el, tpl } = template(file);
+    const toggles = [...el.querySelectorAll(".tg")];
+    const involution = toggles.find(node => node.firstElementChild.textContent.startsWith("Жировая инволюция"));
+    const pathology = toggles.find(node => node.firstElementChild.textContent === "+ патология ПЖ");
+    const description = () => tpl.text("protocol");
+    assert.match(description(), /Жировая инволюция в рамках возрастных изменений\./, file);
+    involution.click();
+    assert.match(description(), /Выраженная жировая инволюция\./, file);
+    involution.click();
+    assert.match(description(), /Атрофия паренхимы\./, file);
+    involution.click();
+    assert.doesNotMatch(description(), /инволюци|Атрофия паренхимы/i, file);
+    assert.match(description(), /Окружающая клетчатка сохранна\.\nСелезёнка обычных размеров\./, file);
+    pathology.click();
+    pathology.click();
+    assert.match(description(), /Окружающая клетчатка сохранна\. В железе и окружающей клетчатке отмечаются изменения \(описание\)\./, file);
+    involution.click();
+    assert.match(description(), /Жировая инволюция в рамках возрастных изменений\./, file);
+  }
+});
+
 test("КТА грудной аорты: форма просвета меняется только у выбранного уровня", () => {
   const { el, tpl } = template("cta-thoracic-aorta.md");
   const shapes = [...el.querySelectorAll("select")];
@@ -303,10 +413,15 @@ test("КТ ОГК: фраза о свежих изменениях исчеза�
   assert.equal(tpl.text().match(fresh), null);
   cycle("Сердце");
   assert.equal(tpl.text().match(fresh)?.length, 2);
-  type("L1 HU", "100");
-  assert.equal(tpl.text().match(fresh), null);
-  type("L1 HU", "130");
-  assert.equal(tpl.text().match(fresh)?.length, 2);
+  for (const value of ["111", ""]) {
+    type("L1 HU", "110");
+    assert.equal(tpl.text().match(fresh), null);
+    assert.match(tpl.text("protocol"), /косвенные МСКТ-признаки остеопороза/);
+    assert.doesNotMatch(tpl.text("conclusion"), /остеопороз|денситометрия/i);
+    type("L1 HU", value);
+    assert.equal(tpl.text().match(fresh)?.length, 2);
+    assert.doesNotMatch(tpl.text(), /остеопороз/i);
+  }
 
   const screening = template("ct-chest-ldct.md");
   const findings = screening.el.querySelector(".tg");
@@ -341,7 +456,24 @@ test("конструктор переломов: формулировка диа
     assert.doesNotMatch(output("conclusion"), /ступенька|суставная поверхность/i);
     choose("joint", "no");
     assert.match(output("conclusion"), /^Вколоченный косой перелом /);
+    const findings = document.getElementById("additionalFindings");
+    let clipboard;
+    document.execCommand = () => { clipboard = document.activeElement.value; return true; };
+    const copy = section => {
+      document.querySelector('[data-copy="' + section + '"]').click();
+      return clipboard;
+    };
+    assert.equal(findings.value, "");
+    assert.equal(copy("description"), output("description"));
+    findings.value = " \n \t ";
+    assert.equal(copy("description"), output("description"));
+    findings.value = " \nДополнительная находка. \n";
+    const description = output("description") + "\n\nДополнительная находка.";
+    assert.equal(copy("description"), description);
+    assert.equal(copy("all"), description + "\n\nЗАКЛЮЧЕНИЕ: " + output("conclusion"));
+    assert.equal(copy("conclusion"), output("conclusion"));
     document.getElementById("resetBtn").click();
+    assert.equal(findings.value, "");
     assert.match(output("conclusion"), /^Перелом /);
   } finally { dom.window.close(); }
 });

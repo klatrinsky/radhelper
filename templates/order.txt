@@ -15,11 +15,13 @@ ct-chest-short.md
 ct-chest-ldct.md
 cta-pulmonary.md
 cta-thoracic-aorta.md
+ct-coronary-calcium.md
 ct-abdomen.md
 ct-abdomen-contrast.md
 ct-abdomen-short.md
 ct-kidneys.md
 ct-kidneys-contrast.md
+ct-kidneys-short.md
 ct-voiding-urethrography.md
 ct-pelvis-m.md
 ct-pelvis-f.md
@@ -65,6 +67,7 @@ xr-feet-hallux.md
 xr-feet-flat.md
 xr-foot-postop.md
 xr-urography.md
+xr-stomach.md
 
 # Денситометрия
 dxa.md

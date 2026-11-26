@@ -4,8 +4,9 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { openSite, read } = require("./env");
 
-let F;
-test.before(async () => { F = (await openSite()).RH_FINDINGS; });
+let W, F;
+test.before(async () => { W = await openSite(); F = W.RH_FINDINGS; });
+test.after(() => W?.close());
 
 // как в интерфейсе: кнопки — первый вариант по умолчанию, поля — пусто; дальше — что «нажал» тест
 function verdict(file, set) {

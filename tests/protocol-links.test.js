@@ -54,6 +54,186 @@ test("неизвестная ссылка оставляет доступ к п�
   assert.equal($("#toast").textContent, "Скопировано");
 });
 
+test("сброс очищает текущий вариант, а переходы между вкладками сохраняют данные", async t => {
+  const w = await openSite({ query: "?protocol=ct-brain-short" });
+  t.after(() => w.close());
+  const $ = selector => w.document.querySelector(selector);
+  const field = () => $('.tpl input[data-name="Рога"]');
+  const notes = () => $(".additional-findings textarea");
+  const fill = (horns, findings) => {
+    field().value = horns;
+    field().dispatchEvent(new w.Event("input", { bubbles: true }));
+    notes().value = findings;
+  };
+  const switchTab = () => $(".tab:not([aria-selected=true])").click();
+
+  fill("23", "Краткий вариант");
+  switchTab();
+  fill("28", "Подробный вариант");
+  switchTab();
+  assert.equal(field().value, "23");
+  assert.equal(notes().value, "Краткий вариант");
+
+  $(".reset").click();
+  assert.equal(field().value, "");
+  assert.equal(notes().value, "");
+  assert.deepEqual([...w.document.querySelectorAll(".sheet-bar button")].map(button => button.textContent),
+    ["Сбросить", "Скопировать протокол"]);
+  assert.equal(w.location.search, "?protocol=ct-brain-short");
+  switchTab();
+  assert.equal(field().value, "28");
+  assert.equal(notes().value, "Подробный вариант");
+  switchTab();
+  assert.equal(field().value, "");
+  assert.equal(notes().value, "");
+});
+
+test("кнопки маммографии раздельно копируют протокол и заключение", async t => {
+  const w = await openSite({ query: "?protocol=mmg-ds" });
+  t.after(() => w.close());
+  const $ = selector => w.document.querySelector(selector);
+  let clipboard;
+  w.document.execCommand = command => {
+    assert.equal(command, "copy");
+    clipboard = $("textarea[readonly]").value;
+    return true;
+  };
+
+  $(".copy").click();
+  assert.match(clipboard, /^Обзорные снимки обеих молочных желёз выполнены в стандартных косых и прямых проекциях\./);
+  assert.doesNotMatch(clipboard, /заключение:/i);
+  assert.equal(clipboard.match(/BI-RADS 1/g).length, 2);
+  assert.match(clipboard, /Рекомендации: контрольная маммография через 12 месяцев\.$/);
+  const protocol = clipboard;
+  const findings = $(".additional-findings textarea");
+  assert.equal(findings.value, "");
+  assert.ok(findings.closest("label").nextElementSibling.matches(".tpl-conclusion"));
+
+  findings.value = " \n \t ";
+  $(".copy").click();
+  assert.equal(clipboard, protocol);
+  findings.value = " \nПервая дополнительная находка.\nВторая дополнительная находка. \n";
+  $(".copy").click();
+  assert.equal(clipboard, protocol.replace(/\n+Рекомендации:/,
+    "\n\nПервая дополнительная находка.\nВторая дополнительная находка.\n\nРекомендации:"));
+
+  $(".copy-conclusion").click();
+  assert.equal(clipboard, "Левая молочная железа: BI-RADS 1.\nПравая молочная железа: BI-RADS 1.");
+});
+
+test("КТ почек: можно вернуться к автоматическому заключению и сохранить ручной текст", async t => {
+  for (const [id, normal] of [
+    ["ct-kidneys", "Конкременты в почках и мочеточниках не выявлены. ЧЛС и мочеточники не расширены."],
+    ["ct-kidneys-contrast", "Объёмные образования почек не выявлены. ЧЛС и мочеточники не расширены."],
+  ]) {
+    const w = await openSite({ query: "?protocol=" + id });
+    t.after(() => w.close());
+    const $ = selector => w.document.querySelector(selector);
+    const mode = $(".tpl-conclusion select");
+    const field = $(".tpl-conclusion input");
+    const conclusion = $(".copy-conclusion");
+    let clipboard;
+    w.document.execCommand = () => {
+      clipboard = $("textarea[readonly]").value;
+      return true;
+    };
+    const choose = index => {
+      mode.selectedIndex = index;
+      mode.dispatchEvent(new w.Event("change", { bubbles: true }));
+    };
+    assert.equal($("#study").dataset.src, "templates/" + id + ".md");
+    assert.equal(mode.selectedIndex, 0);
+    assert.ok(field.closest(".ln").hidden);
+    conclusion.click();
+    assert.equal(clipboard, normal);
+
+    const filling = [...w.document.querySelectorAll(".tpl .tg")]
+      .find(toggle => toggle.firstElementChild?.textContent.startsWith("удовлетворительно."));
+    $(".copy").click();
+    assert.match(clipboard, /Мочевой пузырь наполнен удовлетворительно\. Стенка не утолщена, объёмные образования и конкременты не определяются\./);
+    filling.click();
+    $(".copy").click();
+    assert.match(clipboard, /Мочевой пузырь наполнен неудовлетворительно\./);
+    assert.doesNotMatch(clipboard, /Мочевой пузырь наполнен неудовлетворительно\. Стенка|Стенка не утолщена, объёмные образования и конкременты/);
+    conclusion.click();
+    assert.equal(clipboard, normal);
+    filling.click();
+    $(".copy").click();
+    assert.match(clipboard, /Мочевой пузырь наполнен удовлетворительно\. Стенка не утолщена, объёмные образования и конкременты не определяются\./);
+
+    choose(1);
+    assert.equal(field.closest(".ln").hidden, false);
+    conclusion.click();
+    assert.equal(conclusion.textContent, "Всё равно скопировать");
+    field.value = "Текст заключения врача.";
+    field.dispatchEvent(new w.Event("input", { bubbles: true }));
+    conclusion.click();
+    assert.equal(clipboard, field.value);
+
+    choose(0);
+    conclusion.click();
+    assert.equal(clipboard, normal);
+    choose(1);
+    conclusion.click();
+    assert.equal(clipboard, "Текст заключения врача.");
+    $(".copy").click();
+    assert.match(clipboard, id === "ct-kidneys"
+      ? /^Исследование выполнено без внутривенного контрастирования\./
+      : /^Применено внутривенное болюсное контрастирование \(нативная, кортикомедуллярная, нефрографическая и экскреторная фазы\)\./);
+    assert.doesNotMatch(clipboard, /заключение|вручную/i);
+
+    choose(0);
+    const kidneys = [...w.document.querySelectorAll(".tpl .tg")]
+      .find(toggle => toggle.firstElementChild?.textContent.startsWith("Почки обычных размеров"));
+    kidneys.click();
+    assert.ok(!$(".tpl-conclusion").textContent.includes(normal));
+    choose(1);
+    conclusion.click();
+    assert.equal(clipboard, "Текст заключения врача.");
+  }
+});
+
+test("КТ поясничного отдела синхронизирует угол Кобба в описании и заключении", async t => {
+  const w = await openSite({ query: "?protocol=ct-spine-lumbar" });
+  t.after(() => w.close());
+  const $ = selector => w.document.querySelector(selector);
+  const scoliosis = [...w.document.querySelectorAll(".tpl .tg")]
+    .find(toggle => toggle.firstElementChild?.textContent.startsWith("Ось позвоночника"));
+  let clipboard;
+  w.document.execCommand = () => {
+    clipboard = $("textarea[readonly]").value;
+    return true;
+  };
+  $(".copy-conclusion").click();
+  assert.doesNotMatch(clipboard, /угол Кобба/);
+
+  scoliosis.click();
+  const angle = scoliosis.querySelector('input[placeholder="__"]');
+  const reflected = [...w.document.querySelectorAll(".tpl-conclusion .tg")]
+    .find(toggle => toggle.textContent.includes("угол Кобба")).querySelector("input");
+  const fill = value => {
+    angle.value = value;
+    angle.dispatchEvent(new w.Event("input", { bubbles: true }));
+    assert.equal(reflected.value, value);
+  };
+  for (const value of ["23", "18,5"]) {
+    fill(value);
+    for (const selector of [".copy", ".copy-conclusion"]) {
+      $(selector).click();
+      assert.ok(clipboard.includes("угол Кобба " + value + "°"));
+    }
+  }
+
+  fill("");
+  clipboard = undefined;
+  $(".copy-conclusion").click();
+  assert.equal(clipboard, undefined);
+  assert.equal($(".copy-conclusion").textContent, "Всё равно скопировать");
+  $(".copy-conclusion").click();
+  assert.match(clipboard, /угол Кобба \[__\]°/);
+  assert.doesNotMatch(clipboard, /18,5|23°/);
+});
+
 test("каждый вариант из каталога имеет уникальный идентификатор ссылки", () => {
   const files = read("templates/order.txt").split("\n").map(line => line.trim())
     .filter(line => line && !line.startsWith("#"));
@@ -66,10 +246,13 @@ test("заголовок новостей открывает архив, усл�
   t.after(() => w.close());
   const $ = selector => w.document.querySelector(selector);
   const link = $("#news h2 a");
-  assert.match(link.textContent, /Что нового/);
+  assert.equal(link.textContent, "Что нового");
   assert.equal(link.hash, "#newsArchive");
+  assert.equal(w.document.querySelectorAll("#news ul").length, 1);
+  assert.equal(w.document.querySelectorAll("#news li").length, 7);
   assert.equal($("footer #newsArchiveBtn"), null);
-  assert.equal($("footer p:nth-child(2) a").getAttribute("href"), "LICENSE");
+  assert.equal($("footer p:nth-child(2) a").getAttribute("href"), "license.html");
+  assert.match($("footer #lastUpdate").textContent, /^Последнее обновление: \d{2}\.\d{2}\.\d{4}$/);
   assert.match(read("LICENSE"), /CC BY-NC 4\.0/);
 
   link.click();

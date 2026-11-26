@@ -8,15 +8,17 @@ const { openSite, read, list, ROOT } = require("./env");
 
 let W;
 test.before(async () => { W = await openSite(); });
+test.after(() => W?.close());
 
 const order = dir => read(dir + "/order.txt").split("\n").map(s => s.trim()).filter(s => s && !s.startsWith("#"));
 const body = f => read(f).replace(/\r/g, "").split("\n---\n").slice(1).join("\n---\n");
 const head = f => read(f).replace(/\r/g, "").split("\n---\n")[0];
 const lower = s => s.toLowerCase().replace(/ё/g, "е");
 
-test("сайт открывается без ошибок — у врача и у лаборанта", async () => {
+test("сайт открывается без ошибок — у врача и у лаборанта", async t => {
   for (const lab of [false, true]) {
     const w = lab ? await openSite({ lab: true }) : W;
+    if (lab) t.after(() => w.close());
     const who = lab ? "лаборант" : "врач";
     assert.deepEqual(w.__errors, [], who + ": ошибки JavaScript");
     assert.deepEqual([...w.document.querySelectorAll(".err")].map(e => e.textContent), [], who + ": сообщения об ошибке на странице");

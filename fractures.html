@@ -14,6 +14,8 @@
     .fract-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line)}.fract-id{display:flex;align-items:center;gap:9px;font-weight:750}.num{height:25px;width:25px;display:grid;place-items:center;background:var(--accentsoft);color:var(--accent);font-size:12px;border-radius:8px}.f-card .panelbody{padding-top:14px}.f-grid{display:grid;gap:13px}.mini-details{border:1px solid var(--line);border-radius:11px;overflow:hidden}.mini-details summary{cursor:pointer;list-style:none;padding:11px 13px;display:flex;justify-content:space-between;gap:10px;align-items:center;font-weight:700;font-size:13.5px;background:var(--head)}.mini-details summary::-webkit-details-marker{display:none}.mini-details summary::after{content:'⌄';font-size:19px;font-weight:400;line-height:1;color:var(--muted)}.mini-details[open] summary::after{content:'⌃'}.mini-details .inner{padding:13px;display:grid;gap:11px}.checkline{display:flex;align-items:start;gap:8px;font-size:13.5px}.checkline input{margin:3px 0 0;accent-color:var(--accent)}.subgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mutedbox{border-radius:9px;background:var(--head);padding:10px 12px;font-size:12px;color:var(--muted)}.alert{border:1px solid #dfc39a;border-radius:10px;padding:11px 13px;background:color-mix(in srgb,var(--card),#b7802d 8%);color:var(--warn);font-size:12.5px}
     .preview{position:sticky;top:14px}.pretext{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14.5px;line-height:1.75;min-height:82px}.report{border:1px solid var(--line);border-radius:11px;padding:15px 16px;margin-bottom:13px;background:var(--card)}.reporttitle{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}.reporttitle button{border:0;background:transparent;color:var(--accent);font-size:12px;font-weight:700;padding:3px 0}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.hr{height:1px;background:var(--line);margin:14px 0}.footer{max-width:1310px;margin:0 auto;padding:0 20px 35px;color:var(--muted);font-size:12px}.iconbtn{border:0;background:transparent;color:var(--muted);font-size:12px;padding:5px 8px}.iconbtn:hover{color:var(--ink)}.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--card);border-radius:9px;padding:9px 16px;font-size:13px;z-index:8;box-shadow:0 4px 25px #0002}.hidden{display:none!important}.note-r{color:var(--muted);font-size:12px}.progress{height:4px;background:var(--line);border-radius:3px;overflow:hidden;margin:14px 0 0}.progress b{height:100%;display:block;background:var(--accent);width:65%;transition:width .2s}
     .reporttitle h3{margin:0;font-size:13px;font-weight:750;letter-spacing:normal;text-transform:none}
+    .report .field{margin-top:8px}
+    .report textarea.input{font:inherit;font-size:16px;height:auto;padding:6px 8px;resize:vertical}
     .report.conclusion{background:var(--accentsoft);border-inline-start:4px solid var(--accent)}
     .conclusion .reporttitle{justify-content:flex-end}
     .conclusion .pretext{min-height:0;font-weight:650}
@@ -53,6 +55,10 @@
           <section class="report" aria-labelledby="description-title">
             <div class="reporttitle" data-feedback-source="fractures.html · Интерфейс конструктора переломов"><h3 id="description-title">Описание</h3><button type="button" data-copy="description" aria-label="Копировать описание">Копировать</button></div>
             <div id="description" class="pretext"></div>
+            <div class="field">
+              <label for="additionalFindings">Дополнительные находки</label>
+              <textarea id="additionalFindings" class="input" rows="2"></textarea>
+            </div>
           </section>
           <section class="report conclusion" aria-label="Заключение">
             <div class="reporttitle" data-feedback-source="fractures.html · Интерфейс конструктора переломов"><button type="button" data-copy="conclusion">Копировать заключение</button></div>
@@ -218,9 +224,10 @@
   function report(){
     const reg=regions[state.region];const projectionCount={1:'в одной проекции',2:'в двух проекциях',3:'в трёх проекциях'}[state.projections];
     const p=state.projections==='2' && state.projectionType?`в ${state.projectionType} проекциях`:projectionCount;
-    const intro=`На рентгенограммах ${reg[state.side]}, выполненных ${p},`;
+    const acquisition=`Снимки ${reg[state.side]} выполнены ${p}.`;
     const fs=state.fractures;
-    const description=fs.length===1?`${intro} определяется ${describeOne(fs[0]).replace(/^([А-ЯЁ])/u,x=>x.toLowerCase())}` :`${intro} определяются следующие изменения:\n${fs.map((fr,i)=>`${i+1}. ${describeOne(fr)}`).join('\n')}`;
+    const findings=fs.length===1 ? describeOne(fs[0]) : fs.map((fr,i)=>`${i+1}. ${describeOne(fr)}`).join('\n');
+    const description=`${acquisition}\n${findings}`;
     const conclusion=(state.mode==='followup'?'Контрольное исследование.\n':'')+(fs.length===1?concludeOne(fs[0]):fs.map((fr,i)=>`${i+1}. ${concludeOne(fr)}`).join('\n'));
     const warning=[];
     for(const [i,fr] of fs.entries()){
@@ -271,14 +278,27 @@
   });
   $('fractureList').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;if(state.fractures.length<2)return;state.fractures=state.fractures.filter(f=>f.id!==Number(b.dataset.remove));renderAll();});
   $('addBtn').addEventListener('click',()=>{const last=state.fractures[state.fractures.length-1];state.fractures.push(defaultFracture(currentBones().find(id=>id!==last.bone)||last.bone));renderAll();const cards=document.querySelectorAll('.f-card');cards[cards.length-1]?.scrollIntoView({behavior:'smooth',block:'start'});});
-  $('resetBtn').addEventListener('click',()=>{state.region='forearm';state.side='right';state.projections='2';state.projectionType='';state.mode='primary';state.prevDate='';state.fractures=[defaultFracture()];state.fractures[0].loc='distmetaepi';renderAll();});
+  $('resetBtn').addEventListener('click',()=>{
+    state.region='forearm';state.side='right';state.projections='2';state.projectionType='';state.mode='primary';state.prevDate='';
+    state.fractures=[defaultFracture()];state.fractures[0].loc='distmetaepi';
+    $('additionalFindings').value='';
+    renderAll();
+  });
   const toast=$('toast');let toastTimer;
   function showToast(s){toast.textContent=s;toast.classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.add('hidden'),2100);}
   async function copyText(value){
     try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(value);}else{const ta=document.createElement('textarea');ta.value=value;ta.style.cssText='position:fixed;left:-9999px;top:0';document.body.append(ta);ta.focus();ta.select();if(!document.execCommand('copy'))throw new Error('copy failed');ta.remove();}showToast('Текст скопирован');}
     catch(err){showToast('Копирование недоступно: выделите текст вручную');}
   }
-  document.addEventListener('click',e=>{const b=e.target.closest('[data-copy]');if(!b)return;const r=report();const val=b.dataset.copy==='description'?r.description:b.dataset.copy==='conclusion'?r.conclusion:`${r.description}\n\nЗАКЛЮЧЕНИЕ: ${r.conclusion.replace(/\n/g,'\n')}`;copyText(val);});
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('[data-copy]');
+    if(!b)return;
+    const r=report();
+    const description=[r.description,$('additionalFindings').value.trim()].filter(Boolean).join('\n\n');
+    const val=b.dataset.copy==='description'?description:b.dataset.copy==='conclusion'?r.conclusion:
+      `${description}\n\nЗАКЛЮЧЕНИЕ: ${r.conclusion}`;
+    copyText(val);
+  });
   renderAll();
   </script>
   <script src="assets/js/feedback.js"></script>

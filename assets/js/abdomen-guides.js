@@ -39,13 +39,13 @@
     }
   };
   const LONG = [
-    ['Печень:', 'liver'],
-    ['Желчный пузырь:', 'gallbladder'],
-    ['Желчные протоки:', 'bile'],
-    ['Поджелудочная железа:', 'pancreas'],
-    ['Селезёнка:', 'spleen'],
-    ['Почки:', 'kidneys'],
-    ['Надпочечники:', 'adrenal']
+    ['Контуры печени ровные, структура паренхимы однородная.', 'liver'],
+    ['Желчный пузырь обычных размеров.', 'gallbladder'],
+    ['Внутрипечёночные и внепечёночные желчные протоки обычного калибра.', 'bile'],
+    ['Главный панкреатический проток обычного калибра.', 'pancreas'],
+    ['Селезёнка обычных размеров.', 'spleen'],
+    ['Почки обычного положения и формы.', 'kidneys'],
+    ['Надпочечники обычной формы, без особенностей.', 'adrenal']
   ];
   const SHORT = [
     ['Желчевыводящие и мочевыводящие пути обычного калибра.', 'bile'],
@@ -90,13 +90,11 @@
   }
   window.RH_ABDOMEN_GUIDES = {
     add(text, el) {
-      if (!text.startsWith('МСКТ органов брюшной полости ')) return;
+      if (!text.includes('Свободные пространства брюшной полости без особенностей.')) return;
       if (el.querySelector('.abdominal-help-toggle')) return;
-      const short = !text.includes('Желчные протоки:');
-      const targets = short ? SHORT : LONG;
       const lines = [...el.querySelectorAll('.ln')];
       let serial = 0;
-      for (const [needle, key] of targets) {
+      for (const [needle, key] of [...LONG, ...SHORT]) {
         const line = lines.find(x => x.textContent.includes(needle));
         if (line) addGuide(line, needle, key, ++serial);
       }

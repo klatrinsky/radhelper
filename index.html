@@ -226,6 +226,8 @@
     min-width: 3ch; max-width: 100%; box-sizing: content-box; }
   .fld:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   .fld::placeholder { color: var(--muted); }
+  .additional-findings { display: grid; gap: 4px; margin: 8px 0; color: var(--muted); }
+  .additional-findings textarea { box-sizing: border-box; width: 100%; padding: 6px 8px; resize: vertical; }
   /* Незаполненное при попытке скопировать */
   .fld.miss, .calc.miss { outline: 2px solid var(--err); outline-offset: 1px; background: var(--warn-bg); }
   /* Калькулятор {{NASCET}}: считает сам */
@@ -384,7 +386,8 @@
   .news h2 { margin: 0 0 6px; font-size: 0.85rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
   .news ul { margin: 0; padding-left: 1.1em; }
   .news li { margin: 3px 0; }
-  .news ul + h2 { margin-top: 14px; }
+  .news-badge { display: inline-block; padding: 0 6px; border-radius: 8px;
+    background: var(--head); color: var(--accent); font-size: 0.72rem; font-weight: 600; }
   .news a { color: var(--accent); }
   .news h2 a { text-decoration: none; }
   .news .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); }
@@ -524,6 +527,7 @@ else if (!location.hash) document.body.classList.add("home");
   <p>Справочный материал для врачей и ординаторов, не клиническая рекомендация.</p>
   <p>© 2026 Е. А. Круглов · <a href="license.html">Условия использования RadHelper</a> · <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.ru" rel="license">CC BY-NC 4.0</a></p>
   <p>Поругать автора: <a href="https://t.me/klatrinsky" target="_blank" rel="noopener">Telegram</a> · <a href="mailto:klatrinsky@gmail.com?subject=rad-helper%3A%20%D0%B7%D0%B0%D0%BC%D0%B5%D1%87%D0%B0%D0%BD%D0%B8%D0%B5">Email</a></p>
+  <p id="lastUpdate" hidden></p>
 </footer>
 <dialog class="news-arch" id="newsArchive" aria-labelledby="newsArchiveTitle">
   <div class="news-arch-h"><b id="newsArchiveTitle">Архив новостей</b>
@@ -880,7 +884,6 @@ if (window.RH_LAB) {
 
       // Keep the live form and its calculation state together for each variant.
       const forms = new Map();
-      let undoReset = null;
       let current = null;
       // Широкий запрос: группируем исследования, не меняя список вариантов каждого шаблона.
       const searchCategory = s => {
@@ -970,17 +973,17 @@ if (window.RH_LAB) {
         studyEl.querySelectorAll(".pick").forEach(b => b.onclick = () => render(found, found[+b.dataset.i], 0));
         studyEl.querySelectorAll(".tab").forEach(b => b.onclick = () => render(found, s, +b.dataset.v));
         if (tpl) {
-          function bindCopy(btn, label, conclusion = false) {
+          function bindCopy(btn, label, section) {
             if (!btn) return;
             let armed = 0;
             btn.textContent = label;
             btn.onclick = function onCopy() {
-              const miss = tpl.missing(conclusion);
+              const miss = tpl.missing(section);
               studyEl.querySelectorAll(".miss").forEach(e => e.classList.remove("miss"));
               if (!miss.length || Date.now() - armed < 8000) {
                 armed = 0;
                 btn.textContent = label;
-                copy(tpl.text(conclusion));
+                copy(tpl.text(section));
                 return;
               }
               armed = Date.now();
@@ -998,30 +1001,16 @@ if (window.RH_LAB) {
               }, 8100);
             };
           }
-          bindCopy(studyEl.querySelector(".copy"), "Скопировать протокол");
-          bindCopy(studyEl.querySelector(".copy-conclusion"), "Скопировать заключение", true);
+          bindCopy(studyEl.querySelector(".copy"), "Скопировать протокол", "protocol");
+          bindCopy(studyEl.querySelector(".copy-conclusion"), "Скопировать заключение", "conclusion");
           // начал заполнять — подсветка с этого поля уходит
           studyEl.querySelector(".tpl").addEventListener("input", e => e.target.classList.remove("miss"));
         }
         const reset = studyEl.querySelector(".reset");
         if (reset) reset.onclick = () => {
-          if (tpl) {
-            undoReset = { variant: v, form: forms.get(v) };
-            forms.delete(v);
-          }
+          if (tpl) forms.delete(v);
           render(found, s, vi);
         };
-        if (undoReset && undoReset.variant === v) {
-          const undo = document.createElement("button");
-          undo.type = "button";
-          undo.textContent = "Отменить сброс";
-          reset.after(undo);
-          undo.onclick = () => {
-            forms.set(v, undoReset.form);
-            undoReset = null;
-            render(found, s, vi);
-          };
-        }
         const box = studyEl.querySelector(".hints");
         if (box) Promise.all(v.hints.map(hint)).then(texts => {
           if (current !== s || !box.isConnected) return;
@@ -1040,7 +1029,7 @@ if (window.RH_LAB) {
       }
 
       q.addEventListener("input", () => {
-        if (!q.value.trim()) { forms.clear(); undoReset = null; }
+        if (!q.value.trim()) forms.clear();
         const words = tokens(q.value).filter(w => !STOP.has(w));
         if (!words.length) { show([], words); return; }
         const found = studies.map(s => ({ s, sc: Math.max(...s.variants.map(v => score(words, v))) }))
@@ -1205,8 +1194,33 @@ if (window.RH_LAB) {
   */
 
   const PH_MM = [];                                   // поля, где в пустом поле вместо имени подсказка «мм»
+
+  function parseAgatston(value) {
+    const decimal = value.trim().replace(",", ".");
+    if (!/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(decimal)) return undefined;
+    const [whole, fraction = ""] = decimal.split(".");
+    return { units: BigInt(whole + fraction), precision: fraction.length };
+  }
+
+  function agatstonReport(scores) {
+    if (scores.some(score => score === undefined)) return "";
+    // Суммируем десятичные значения точно, чтобы ошибка округления не меняла категорию у порога.
+    const precision = Math.max(...scores.map(score => score.precision));
+    const scale = 10n ** BigInt(precision);
+    const sum = scores.reduce((total, score) => total + score.units * 10n ** BigInt(precision - score.precision), 0n);
+    const category = sum === 0n ? 0 : sum < 100n * scale ? 1 : sum < 300n * scale ? 2 : 3;
+    const fraction = (sum % scale).toString().padStart(precision, "0").replace(/0+$/, "");
+    const total = (sum / scale).toString() + (fraction ? "," + fraction : "");
+    const vessels = scores.filter(score => score.units > 0n).length;
+    const modifier = vessels ? "/N" + vessels : "";
+    const finding = ["Коронарный кальциноз не выявлен", "Незначительный коронарный кальциноз",
+      "Умеренный коронарный кальциноз", "Выраженный коронарный кальциноз"][category];
+    return "Суммарный индекс Агатстона — " + total + ". " + finding + " (CAC-DRS A" + category + modifier + ").";
+  }
+
   // Калькуляторы. Чтобы добавить свой: имя, какие поля нужны, формула и сколько знаков после запятой.
   const CALC = {
+    "CAC-DRS": { inputs: ["CAC LM", "CAC LAD", "CAC LCx", "CAC RCA"], raw: true, parseInput: parseAgatston, text: agatstonReport },
     "MEYERDING": { inputs: ["Смещение"], text: percent =>
       percent <= 25 ? "I" : percent <= 50 ? "II" : percent <= 75 ? "III" : percent <= 100 ? "IV" : "V" },
     "NASCET": { inputs: ["Dмин", "Dдист"], digits: 0,
@@ -1228,9 +1242,9 @@ if (window.RH_LAB) {
     // поле называется «L1 HU», а не «L1»: иначе [L1] в «Снижение высоты тела [L1] позвонка» становилось полем плотности
     "L1 HU":  { inputs: ["L1 HU"], digits: 0,                         // плотность тела L1, HU (Pickhardt 2013)
       f: hu => hu,
-      // сам ставит переключатель {#остеопороз: |...}: ≤ 110 HU — второй вариант (фраза в описании и строка в заключении)
-      // reset: поле стёрли — переключатель возвращается к первому варианту (фразы нет)
-      toggle: "остеопороз", pick: x => x <= 110 ? 1 : 0, reset: true },
+      pick: x => x <= 110 ? 1 : 0,
+      // Переключатель зависит от поля, даже если шаблон нигде не выводит {{L1 HU}}.
+      set([hu]) { return { остеопороз: Number.isFinite(hu) && hu >= 0 ? this.pick(Math.round(hu)) : 0 }; } },
     "ADI":    { inputs: ["ADI"], digits: 1,                           // атлантодентальный интервал на КТ, мм (норма у взрослых ≤ 2 мм, Rojas 2007)
       f: adi => adi,
       toggle: "ADI", pick: x => x > 2 ? 1 : 0 }
@@ -1486,7 +1500,8 @@ if (window.RH_LAB) {
       }
       calcs.forEach(c => {
         const def = CALC[c.name];
-        const vals = def.inputs.map(n => num(named[n] ? named[n][0].value : NaN));
+        const parseInput = def.parseInput || num;
+        const vals = def.inputs.map(n => parseInput(named[n]?.[0]?.value ?? ""));
         if (def.raw) {                                             // текст из любых значений (пустые — NaN) и переключателей
           c.value = def.text(vals, tg) || "";
           c.el.textContent = c.value || (def.optional ? "" : "__");
@@ -1801,14 +1816,16 @@ if (window.RH_LAB) {
             span.title = "Нет такого калькулятора. Есть: " + Object.keys(CALC).join(", ");
             out.push(() => raw);
           } else {
+            const def = CALC[key];
             const c = { name: key, el: span, value: "" };
             calcs.push(c);
             out.push(() => {
               if (c.value) return c.value;
-              if (CALC[key].optional) return EMPTY;
-              // подсветить пустое поле, из которого считается (оно может быть и в жёлтой строке «> …»)
-              const n = CALC[key].inputs.find(n => named[n] && named[n].some(i => !i.value.trim()));
-              missing.push(n ? { label: n, el: named[n].find(i => !i.value.trim()) } : { label: key, el: span });
+              if (def.optional) return EMPTY;
+              // Подсветить пустое или некорректно заполненное поле калькулятора.
+              const invalid = input => !input.value.trim() || (def.parseInput && def.parseInput(input.value) === undefined);
+              const n = def.inputs.find(n => named[n]?.some(invalid));
+              missing.push(n ? { label: n, el: named[n].find(invalid) } : { label: key, el: span });
               return "[__]";
             });
           }
@@ -1824,13 +1841,30 @@ if (window.RH_LAB) {
       if (last < str.length) { const t = str.slice(last); target.append(t); out.push(() => t); }
     }
 
+    function addAdditionalFindings() {
+      const label = document.createElement("label");
+      label.className = "additional-findings";
+      label.textContent = "Дополнительные находки";
+      const field = document.createElement("textarea");
+      field.className = "fld";
+      field.rows = 2;
+      label.append(field);
+      el.append(label);
+      parts.push(() => {
+        const findings = field.value.trim();
+        return findings ? "\n" + findings + "\n\n" : "";
+      });
+    }
+
     // строка «> …» — пульт: поля и переключатели для расчётов (пол, возраст…); видна, но в копируемый текст не попадает
     const lines = text.split("\n");
     let reportSection = el;
-    let conclusionSection, conclusionStart, conclusionEnd;
+    let conclusionSection, conclusionHeading, conclusionStart, conclusionEnd;
     lines.forEach((line, i) => {
       const conclusionTitle = line.match(/^Заключение:[ \t]*/i)?.[0];
       if (conclusionTitle) {
+        if (!conclusionSection) addAdditionalFindings();
+        conclusionHeading = parts.length;
         conclusionSection = reportSection = document.createElement("section");
         reportSection.className = "tpl-conclusion";
         reportSection.setAttribute("aria-label", "Заключение");
@@ -1910,21 +1944,27 @@ if (window.RH_LAB) {
       button.className = "copy-conclusion";
       button.textContent = "Скопировать заключение";
       conclusionSection.append(button);
-    }
+    } else addAdditionalFindings();
     if (window.RH_ABDOMEN_GUIDES) window.RH_ABDOMEN_GUIDES.add(text, el);
     if (named["Рога"] && named["Череп"]) addEvansGuide(named["Рога"]);
     recalc();
     lists.forEach(f => f());
     tidy();
-    const copyParts = conclusion => conclusion ? parts.slice(conclusionStart, conclusionEnd) : parts;
+    function copyParts(section) {
+      if (section === "conclusion" || section === true) return parts.slice(conclusionStart, conclusionEnd);
+      if (section === "protocol" && conclusionHeading !== undefined) {
+        return parts.slice(0, conclusionHeading).concat(parts.slice(conclusionEnd ?? parts.length));
+      }
+      return parts;
+    }
     return {
       // что осталось незаполненным в том тексте, который уйдёт при копировании (скрытые варианты {а|б} не считаются)
-      missing: conclusion => {
-        missing = []; copyParts(conclusion).forEach(p => p());
+      missing: section => {
+        missing = []; copyParts(section).forEach(p => p());
         const seen = new Set(), m = missing.filter(x => !seen.has(x.el) && seen.add(x.el));   // поле и его калькулятор — один раз
         missing = []; return m;
       },
-      text: conclusion => copyParts(conclusion).map(p => p()).join("")
+      text: section => copyParts(section).map(p => p()).join("")
         .split("\n").filter(l => !(l.includes(EMPTY) && !l.replace(/\u0000/g, "").trim())).join("\n")
         .replace(/\u0000/g, "")
         .replace(/[ \t]{2,}/g, " ")
@@ -1956,11 +1996,10 @@ if (window.RH_LAB) {
 })();
 </script>
 <script>
-/* «Что нового»: content/news.md у врача, content/news_lab.md у лаборанта. «# …» — заголовок, «- …» — пункт.
+/* «Что нового»: content/news.md у врача, content/news_lab.md у лаборанта. «# …» — дата, «- …» — новость.
    [[слово]] подставляет запрос в поиск врача; [текст](?lab#раздел) открывает раздел у лаборанта.
-   На главной — три верхних выпуска. Ссылка в заголовке открывает архив выбранной ленты. */
+   Записи идут от новых к старым. В новых датах указываем год; для старых он выводится из предыдущей даты. */
 (function () {
-  const HOME = 3;
   const box = document.getElementById("news");
   const q = document.getElementById("q");
   const dlg = document.getElementById("newsArchive");
@@ -1972,10 +2011,34 @@ if (window.RH_LAB) {
     .replace(/\[\[([^\]]+)\]\]/g, '<span class="try" role="button" tabindex="0" data-q="$1">«$1»</span>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/\[([^\]]+)\]\(((?:\?|\/)[^)\s]*)\)/g, '<a href="$2">$1</a>');   // ссылка внутри сайта, например ?lab
-  const html = blocks => blocks.map(b =>
-    (b.h ? "<h2>" + line(b.h) + "</h2>" : "") +
-    "<ul>" + b.items.map(i => "<li>" + line(i) + "</li>").join("") + "</ul>"
-  ).join("");
+  const list = items => "<ul>" + items.map(i => "<li>" + line(i) + "</li>").join("") + "</ul>";
+  const months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+
+  function parseDate(heading, previous) {
+    const match = heading.match(/(?:^| · )(\d{1,2}) ([а-я]+)(?: (\d{4}))?$/i);
+    if (!match) return null;
+    const day = Number(match[1]);
+    const month = months.indexOf(match[2].toLowerCase());
+    if (month === -1) return null;
+    let year = match[3] ? Number(match[3]) : previous.getFullYear();
+    if (!match[3] && (month > previous.getMonth() || (month === previous.getMonth() && day > previous.getDate()))) year--;
+    const date = new Date(year, month, day);
+    return date.getMonth() === month && date.getDate() === day ? date : null;
+  }
+
+  function markNew(item, date) {
+    if (!date) return;
+    const expires = new Date(date);
+    expires.setDate(expires.getDate() + 7);
+    const now = Date.now();
+    if (now < date || now >= expires) return;
+    const badge = document.createElement("span");
+    badge.className = "news-badge";
+    badge.textContent = "Новое";
+    const space = document.createTextNode(" ");
+    item.prepend(badge, space);
+    setTimeout(() => { badge.remove(); space.remove(); }, expires - now);
+  }
 
   // [[слово]] — подставить в поиск (из архива — сначала закрыть окно)
   function tryHandlers(root, before) {
@@ -1990,25 +2053,40 @@ if (window.RH_LAB) {
   };
 
   fetch(window.RH_LAB ? "content/news_lab.md" : "content/news.md", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
-    let blocks = [];
+    let blocks = [], previousDate = new Date();
     t.replace(/\r/g, "").split("\n").forEach(l => {
       l = l.trim();
-      if (/^# /.test(l)) blocks.push({ h: l.slice(2), items: [] });
-      else if (/^[-*] /.test(l)) {
-        if (!blocks.length) blocks.push({ h: "", items: [] });
+      if (/^# /.test(l)) {
+        const h = l.slice(2);
+        const date = parseDate(h, previousDate);
+        if (date) previousDate = date;
+        blocks.push({ h, date, items: [] });
+      } else if (/^[-*] /.test(l)) {
+        if (!blocks.length) blocks.push({ h: "", date: null, items: [] });
         blocks[blocks.length - 1].items.push(l.slice(2));
       }
     });
     blocks = blocks.filter(b => b.items.length);
     if (!blocks.length) return;
 
-    box.innerHTML = html(blocks.slice(0, HOME));
+    const recent = blocks.flatMap(b => b.items.map(text => ({ text, date: b.date }))).slice(0, 7);
+    box.innerHTML = "<h2>Что нового</h2>" + list(recent.map(item => item.text));
+    box.querySelectorAll("li").forEach((item, index) => markNew(item, recent[index].date));
     box.hidden = false;
     tryHandlers(box);
 
+    const latestDate = blocks.find(b => b.date)?.date;
+    if (latestDate) {
+      const footer = document.getElementById("lastUpdate");
+      footer.textContent = "Последнее обновление: " + latestDate.toLocaleDateString("ru-RU", {
+        day: "2-digit", month: "2-digit", year: "numeric"
+      });
+      footer.hidden = false;
+    }
+
     const heading = box.querySelector("h2");
-    if (!heading || !dlg) return;
-    all.innerHTML = html(blocks);
+    if (!dlg) return;
+    all.innerHTML = blocks.map(b => (b.h ? "<h2>" + line(b.h) + "</h2>" : "") + list(b.items)).join("");
     tryHandlers(all, close);
     all.addEventListener("click", e => {
       if (e.target.closest('a[href^="?lab#"]')) close();
