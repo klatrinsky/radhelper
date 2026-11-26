@@ -48,24 +48,45 @@ test("рентгеноскопия желудка копирует описан�
   const w = select.ownerDocument.defaultView;
   const cases = [
     [/грыжевого выпячивания .* не выявлено/i, /признаков грыжи .* не выявлено/i],
-    [/переход смещён выше пищеводного отверстия/i, /Скользящая грыжа .*\(тип I\)/],
-    [/Дно желудка смещено .* рядом с пищеводом\. Пищеводно-желудочный переход сохраняет обычное положение\./, /Параэзофагеальная грыжа .*\(тип II\)/],
-    [/переход и дно желудка смещены выше/i, /Смешанная грыжа .*\(тип III\)/],
-    [/в грудную полость смещены часть желудка и поперечная ободочная кишка/i, /Грыжа .* перемещением желудка и дополнительного органа \(тип IV\)/],
+    [/Аксиальная кардиальная грыжа размерами 24 x 18 мм\./, /^Рентгенологические признаки аксиальной кардиальной грыжи .*\(тип I\)/],
+    [/Параэзофагеальная грыжа размерами 24 x 18 мм\./, /^Рентгенологические признаки параэзофагеальной грыжи .*\(тип II\)/],
+    [/Смешанная грыжа .* размерами 24 x 18 мм\./, /^Рентгенологические признаки смешанной грыжи .*\(тип III\)/],
+    [/размерами 24 x 18 мм\. .* в грудную полость смещены часть желудка и поперечная ободочная кишка/, /^Рентгенологические признаки грыжи .* перемещением желудка и дополнительного органа \(тип IV\)/],
   ];
   assert.equal(select.selectedIndex, 0);
   assert.equal(select.options.length, cases.length);
   cases.forEach(([description, conclusion], i) => {
     select.selectedIndex = i;
     select.dispatchEvent(new w.Event("change", {bubbles: true}));
-    const organ = [...form.querySelectorAll('input[placeholder="__"]')].find(field => !field.closest("[hidden]"));
-    if (i === 4) input(organ, "поперечная ободочная кишка");
-    else assert.equal(organ, undefined);
+    const fields = [...form.querySelectorAll('input[placeholder="__"]')].filter(field => !field.closest("[hidden]"));
+    const values = i === 0 ? [] : ["24", "18"];
+    if (i === 4) values.push("поперечная ободочная кишка");
+    assert.equal(fields.length, values.length);
+    fields.forEach((field, index) => input(field, values[index]));
     const report = copy();
     assert.match(report, description);
     assert.match(copyConclusion(), conclusion);
     assert.doesNotMatch(report, /заключение:|Тип грыжи пищеводного отверстия|\[__\]/i);
   });
+  select.selectedIndex = 0;
+  select.dispatchEvent(new w.Event("change", {bubbles: true}));
+  assert.doesNotMatch(copy(), /24 x 18 мм|поперечная ободочная кишка/);
+  const normal = copy();
+  assert.match(normal, /^Исследование выполнено при приёме контрастного препарата\./);
+  assert.match(normal, /складки слизистой оболочки пищевода прослеживаются на всём протяжении/i);
+  assert.match(normal, /Газовый пузырь желудка сформирован, обычных размеров\./);
+  assert.match(normal, /Перистальтика прослеживается во всех отделах\./);
+  assert.match(normal, /Эвакуация контрастного вещества из желудка своевременная\. Луковица двенадцатиперстной кишки не деформирована/);
+  for (const label of ["на всём протяжении", "сформирован", "обычных размеров", "своевременная"]) {
+    const toggle = [...form.querySelectorAll('.tg[role="button"]')].find(el => el.querySelector('span:not([hidden])')?.textContent.trim() === label);
+    assert.ok(toggle, label);
+    toggle.click();
+  }
+  const changed = copy();
+  assert.match(changed, /складки слизистой оболочки пищевода прослеживаются фрагментарно/i);
+  assert.match(changed, /Газовый пузырь желудка формируется в процессе исследования, увеличен\./);
+  assert.match(changed, /Эвакуация контрастного вещества из желудка малыми порциями\./);
+  assert.equal([...changed.matchAll(/Эвакуация контрастного вещества из желудка/g)].length, 1);
   const hints = w.document.querySelector(".study-hints");
   assert.equal(hints.open, false);
   assert.match(hints.querySelector('a[href*="sages.org"]').textContent, /SAGES/);
