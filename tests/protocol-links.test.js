@@ -251,7 +251,7 @@ test("заголовок новостей открывает архив, усл�
   assert.equal(w.document.querySelectorAll("#news ul").length, 1);
   assert.equal(w.document.querySelectorAll("#news li").length, 7);
   assert.equal($("footer #newsArchiveBtn"), null);
-  assert.equal($("footer p:nth-child(2) a").getAttribute("href"), "license.html");
+  assert.equal($("footer p:nth-child(2) a").getAttribute("href"), "terms.html");
   assert.match($("footer #lastUpdate").textContent, /^Последнее обновление: \d{2}\.\d{2}\.\d{4}$/);
   assert.match(read("LICENSE"), /CC BY-NC 4\.0/);
 
