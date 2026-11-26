@@ -48,8 +48,8 @@ test("каждый «Виджет:» есть в assets/js/widgets.js", () => {
 });
 
 /* ---------- Шаблоны ↔ калькуляторы ---------- */
-// Эти команды разбирает интерактивная схема. Её вывод проверяется в calc.test.js.
-const willisDirectives = new Set(["ВИЛЛИЗИЕВ КРУГ", "ВИЛЛИЗИЕВ ОПИСАНИЕ", "ВИЛЛИЗИЕВ ЗАКЛЮЧЕНИЕ"]);
+// Эти команды разбирают интерактивные схемы.
+const diagramDirectives = new Set(["ВИЛЛИЗИЕВ КРУГ", "ВИЛЛИЗИЕВ ОПИСАНИЕ", "ВИЛЛИЗИЕВ ЗАКЛЮЧЕНИЕ", "СХЕМА АРТЕРИЙ"]);
 
 // максимальный номер варианта, который калькулятор может поставить переключателю
 function maxPick(def) {
@@ -81,7 +81,7 @@ test("шаблоны: каждый {{КАЛЬКУЛЯТОР}} существуе
     const text = body("templates/" + f);
     const fields = new Set([...text.matchAll(/\[([^\[\]\n]*)\]/g)].map(m => m[1].trim()));
     for (const [, raw] of text.matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g)) {
-      if (/^(ПЕРЕЧЕНЬ|ВСЕ)\s*:/.test(raw) || willisDirectives.has(raw)) continue;
+      if (/^(ПЕРЕЧЕНЬ|ВСЕ)\s*:/.test(raw) || diagramDirectives.has(raw)) continue;
       const def = C[raw];
       assert.ok(def, f + ": нет калькулятора {{" + raw + "}}");
       if (def.raw) continue;                                   // такие считают и по неполным данным

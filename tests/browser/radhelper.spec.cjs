@@ -7,6 +7,73 @@ test.beforeEach(async ({ page }) => {
   await page.route('https://mc.yandex.ru/**', route => route.abort());
 });
 
+test('каталог свёрнут, группы открываются независимо, а поиск скрывает каталог', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/');
+  const catalog = page.locator('#catalog');
+  await expect(catalog).toBeVisible();
+  await expect(catalog).toHaveJSProperty('open', false);
+  await catalog.getByText('Все инструменты', { exact: true }).press('Enter');
+  await expect(catalog.locator('.search-group > summary')).toHaveText([
+    'Компьютерная томография и ангиография',
+    'Рентгенография',
+    'Маммография',
+    'Денситометрия',
+    'Интерактивные конструкторы',
+    'Калькуляторы и классификации',
+    'Справочники и памятки'
+  ]);
+  await expect(catalog.locator('.search-group[open]')).toHaveCount(0);
+  await catalog.getByText('Компьютерная томография и ангиография', { exact: true }).click();
+  await catalog.locator('summary').getByText('Маммография', { exact: true }).click();
+  await expect(catalog.locator('.search-group[open]')).toHaveCount(2);
+  const brain = catalog.getByRole('link', { name: 'КТ головного мозга', exact: true });
+  await expect(brain).toHaveCount(1);
+  await expect(brain).toBeVisible();
+  await expect(catalog.getByRole('link', { name: 'Маммография', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize().width);
+
+  const search = page.getByRole('searchbox');
+  await search.fill('денситометрия');
+  await expect(catalog).toBeHidden();
+  await expect(page.locator('#study')).toHaveAttribute('data-src', 'templates/dxa.md');
+  await search.clear();
+  await brain.click();
+  await expect(page).toHaveURL(/\?protocol=ct-brain$/);
+  await expect(page.getByRole('tab', { name: 'Подробно', selected: true })).toBeVisible();
+});
+
+test('каталог ведёт прямо к справочным разделам и обоим типам конструкторов', async ({ page }) => {
+  await page.goto('/');
+  const catalog = page.locator('#catalog');
+  await catalog.getByText('Все инструменты', { exact: true }).click();
+  await catalog.getByText('Калькуляторы и классификации', { exact: true }).click();
+  await catalog.getByRole('link', { name: /Bosniak 2019/ }).click();
+  await expect(page).toHaveURL(/#bosniak$/);
+  await expect(page.locator('#bosniak')).toHaveJSProperty('open', true);
+  await expect(page.locator('#bosniak .body')).toBeVisible();
+  await expect(catalog).toBeHidden();
+  await page.goBack();
+  await expect(catalog).toBeVisible();
+  await page.goForward();
+  await expect(page.locator('#bosniak .body')).toBeVisible();
+  await page.reload();
+  await expect(page.locator('#bosniak .body')).toBeVisible();
+
+  await page.getByRole('button', { name: 'На главную', exact: true }).click();
+  await catalog.getByText('Все инструменты', { exact: true }).click();
+  await catalog.getByText('Интерактивные конструкторы', { exact: true }).click();
+  await catalog.getByRole('link', { name: 'Образование печени', exact: true }).click();
+  await expect(page).toHaveURL(/\?protocol=liver-mass$/);
+  await expect(page.locator('#study .finding')).toBeVisible();
+
+  await page.goto('/');
+  await catalog.getByText('Все инструменты', { exact: true }).click();
+  await catalog.getByText('Интерактивные конструкторы', { exact: true }).click();
+  await catalog.getByRole('link', { name: 'Конструктор переломов', exact: true }).click();
+  await expect(page).toHaveURL(/\/fractures\.html$/);
+});
+
 test('поиск открывает подходящий шаблон', async ({ page }) => {
   await page.goto('/');
   const search = page.getByRole('searchbox', { name: 'Поиск' });
@@ -96,6 +163,7 @@ test('памятка лаборанта загружает только свои
     if (/^\/img\/(retrieve-|topo-|roi-)/.test(path)) imageRequests.push(path);
   });
   await page.goto('/?lab');
+  await expect(page.locator('#catalog')).toBeHidden();
   const retrieve = page.locator('#retrieve img').first();
   const roi = page.locator('#roi img').first();
   await expect(retrieve).toHaveJSProperty('src', '');

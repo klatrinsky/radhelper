@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Артерии нижних конечностей — RadHelper</title>
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/brand.css">
+  <link rel="stylesheet" href="assets/css/leg-arteries.css">
+  <script src="assets/js/leg-arteries-report.js" defer></script>
+  <script src="assets/js/leg-arteries.js" defer></script>
+</head>
+<body class="leg-arteries-page">
+  <header class="site-header">
+    <div class="shell">
+      <a class="rh-logo" href="./" aria-label="RadHelper — на главную">
+        <img src="img/brand-slice.png" alt=""><span class="rh-rad"></span><span class="rh-helper"></span>
+      </a>
+    </div>
+  </header>
+  <main class="shell">
+    <h1>Артерии нижних конечностей</h1>
+    <p class="intro">Экспериментальная схема. Выберите сосуд, чтобы отметить его состояние.</p>
+    <div id="standalone-arteries"></div>
+    <section class="reports" aria-label="Результат">
+      <p class="muted">В текст включаются только отмеченные сосуды.</p>
+      <section class="card report" aria-labelledby="description-title">
+        <div class="report-header">
+          <h2 id="description-title">Описание</h2>
+          <button type="button" data-copy="description" disabled>Скопировать описание</button>
+        </div>
+        <div class="report-text" id="description">Нет отмеченных сосудов.</div>
+      </section>
+      <section class="card report conclusion" aria-labelledby="conclusion-title">
+        <div class="report-header">
+          <h2 id="conclusion-title">Заключение</h2>
+          <button type="button" data-copy="conclusion" disabled>Скопировать заключение</button>
+        </div>
+        <div class="report-text" id="conclusion">Нет отмеченных сосудов.</div>
+      </section>
+    </section>
+  </main>
+  <div id="copy-status" class="copy-status" role="status"></div>
+</body>
+</html>

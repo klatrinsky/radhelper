@@ -420,6 +420,47 @@ test("КТА ног: норма относится к аорте и ветвям
   }
 });
 
+test("КТА ног: все состояния схемы используют связанные поля подробного шаблона", () => {
+  let assessment;
+  const bind = W.bindLegArteriesTemplate;
+  const { el, tpl } = template("cta-legs.md");
+  const preview = tpl.text();
+  const details = el.querySelector(".leg-arteries-toggle");
+  try {
+    W.bindLegArteriesTemplate = form => (assessment = bind(form));
+    details.open = true;
+    details.dispatchEvent(new W.Event("toggle"));
+    assert.ok(assessment);
+    assert.equal(assessment.count(), 0);
+    for (const { id } of W.RH_LEG_ARTERIES.vessels) {
+      for (const mode of assessment.options(id)) {
+        assessment.setStatus(id, mode);
+        assert.equal(assessment.get(id).mode, mode, id);
+        const editor = assessment.editor(id);
+        const values = { percent: "67,5", length: "21", diameter: "32", plaque: "mixed", thrombus: "yes" };
+        for (const key of editor.fields) {
+          const value = key === "location" ? editor.location.slice(-1) : values[key];
+          assert.notEqual(value, undefined, id + " " + key);
+          assessment.setDetail(id, key, value);
+          assert.deepEqual(assessment.get(id).lesions[0][key], value, id + " " + key);
+        }
+      }
+      assessment.reset(id);
+      assert.equal(assessment.get(id), undefined, id);
+    }
+    assessment.confirmUnmarked();
+    assert.equal(assessment.count(), 15);
+    assert.equal(assessment.canConfirm(), false);
+    assert.equal(tpl.text(), preview);
+    assessment.clear();
+    assert.equal(assessment.count(), 0);
+    assert.equal(tpl.text(), preview);
+  } finally {
+    W.bindLegArteriesTemplate = bind;
+    el.remove();
+  }
+});
+
 test("Рентгенография ОГК: сторона релаксации синхронизируется с заключением", () => {
   const { el, tpl } = template("xr-chest-full.md");
   const toggles = () => [...el.querySelectorAll(".tg")];

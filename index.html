@@ -283,18 +283,18 @@
   .fx-src li { font-size: 0.95rem; font-weight: 600; line-height: 1.4; margin: 4px 0; }
   .fx-src-n { margin-top: 8px; font-size: 0.82rem; color: var(--muted); }
   @media (max-width: 640px) { .fx-label { flex-basis: 100%; } }
-  .study-hints > summary { display: inline-flex; align-items: center; gap: 12px; min-height: 44px;
+  :is(.study-hints, .catalog) > summary { display: inline-flex; align-items: center; gap: 12px; min-height: 44px;
     padding: 8px 14px; border: 1px solid var(--accent); border-radius: 10px;
     background: var(--card); background: color-mix(in srgb, var(--accent) 8%, var(--card));
     color: var(--accent); font-size: 0.9rem; font-weight: 600; list-style: none; cursor: pointer; }
-  .study-hints > summary::-webkit-details-marker { display: none; }
-  .study-hints > summary::after { content: ""; width: 7px; height: 7px;
+  :is(.study-hints, .catalog) > summary::-webkit-details-marker { display: none; }
+  :is(.study-hints, .catalog) > summary::after { content: ""; width: 7px; height: 7px;
     border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
     transform: translateY(-2px) rotate(45deg); }
-  .study-hints > summary:hover, .study-hints[open] > summary {
+  :is(.study-hints, .catalog) > summary:hover, :is(.study-hints, .catalog)[open] > summary {
     background: var(--head); background: color-mix(in srgb, var(--accent) 15%, var(--card)); }
-  .study-hints > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-  .study-hints[open] > summary::after { transform: translateY(2px) rotate(225deg); }
+  :is(.study-hints, .catalog) > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  :is(.study-hints, .catalog)[open] > summary::after { transform: translateY(2px) rotate(225deg); }
   .study-hints[open] > .hints { margin-top: 8px; }
   .measure-help-toggle {
     margin-inline-start: 6px; padding: 4px 9px; min-height: 28px;
@@ -458,11 +458,13 @@
   .news-all a { color: var(--accent); }
   .news-all .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); }
 
-  /* Примеры под строкой поиска — только на главной врача. Список — в content/examples.txt */
-  .examples { display: none; }
-  body.home .examples:not([hidden]) { display: block; max-width: 620px; margin: 12px auto 0; padding: 0 16px;
-    text-align: center; color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
-  .examples .try { color: var(--accent); cursor: pointer; border-bottom: 1px dashed var(--accent); white-space: nowrap; }
+  .catalog { display: none; }
+  body.home:not(.lab) .catalog:not([hidden]) { display: block; max-width: 620px; margin: 12px auto 0; text-align: center; }
+  .catalog .search-groups { margin-top: 8px; text-align: left; }
+  .catalog .search-group > summary { min-height: 44px; }
+  .catalog ul { margin: 0; padding: 4px 12px; list-style: none; border-top: 1px solid var(--line); }
+  .catalog li + li { border-top: 1px solid var(--line); }
+  .catalog li a { display: block; padding: 8px 0; color: var(--accent); font-size: .9rem; overflow-wrap: anywhere; }
 
   /* Кот-«домой» слева от поиска: виден везде, кроме главной */
   .home-btn { flex: none; width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 10px;
@@ -500,7 +502,10 @@ else if (!location.hash) document.body.classList.add("home");
     <button type="button" class="home-btn rh-logo" id="homeBtn" aria-label="На главную" title="На главную"><img src="img/brand-slice.png" alt=""><span class="rh-rad"></span><span class="rh-helper"></span></button>
     <input id="q" type="search" placeholder="Что описываем?" autofocus autocomplete="off" enterkeyhint="search" aria-label="Поиск">
   </div>
-  <div class="examples" id="examples" hidden></div>
+  <details class="catalog wrap" id="catalog" hidden>
+    <summary>Все инструменты</summary>
+    <div class="search-groups"></div>
+  </details>
   <nav class="lablinks" id="labLinks" aria-label="Разделы" hidden></nav>
   <div class="news" id="news" hidden></div>
 </header>
@@ -541,6 +546,10 @@ if (window.RH_LAB) {
 <link rel="stylesheet" href="assets/css/willis.css">
 <script src="assets/js/willis-classification.js"></script>
 <script src="assets/js/willis.js"></script>
+<link rel="stylesheet" href="assets/css/leg-arteries.css">
+<script src="assets/js/leg-arteries-report.js"></script>
+<script src="assets/js/leg-arteries.js"></script>
+<script src="assets/js/leg-arteries-template.js"></script>
 <script src="assets/js/widgets.js"></script>
 <script src="assets/js/abdomen-guides.js"></script>
 <script src="assets/js/feedback.js"></script>
@@ -559,6 +568,7 @@ if (window.RH_LAB) {
   const noteEl = document.getElementById("note");
   const q = document.getElementById("q");
   const none = document.getElementById("none");
+  const catalog = document.getElementById("catalog");
 
   if (location.protocol === "file:") {
     listEl.innerHTML = '<p class="err">Страница открыта как файл с диска, а браузер не даёт ей читать соседние файлы. ' +
@@ -579,7 +589,7 @@ if (window.RH_LAB) {
 
   function parse(text) {
     const lines = text.replace(/\r/g, "").split("\n");
-    const out = { title: "", sub: "", html: "", who: "врач", words: "", sos: false, btn: true };
+    const out = { title: "", sub: "", html: "", who: "врач", words: "", sos: false, btn: true, classification: false };
     let html = "", para = [], list = [], ltag = "ul";
     const flushP = () => { if (para.length) { html += "<p>" + inline(para.join(" ")) + "</p>"; para = []; } };
     const flushL = () => { if (list.length) { html += "<" + ltag + ">" + list.map(x => "<li>" + inline(x) + "</li>").join("") + "</" + ltag + ">"; list = []; } };
@@ -592,6 +602,7 @@ if (window.RH_LAB) {
       // служебные строки раздела: на экран не выводятся
       if (/^Для:/i.test(t)) { flush(); out.who = t.replace(/^Для:\s*/i, "").trim().toLowerCase().replace(/ё/g, "е"); continue; }
       if (/^Слова:/i.test(t)) { flush(); out.words += " " + t.replace(/^Слова:\s*/i, ""); continue; }
+      if (/^Каталог:\s*классификация$/i.test(t)) { flush(); out.classification = true; continue; }
       // «Срочно: да» — экстренный раздел: красная рамка, у лаборанта — красная кнопка вверху главной и кнопка SOS
       if (/^Срочно:/i.test(t)) { flush(); out.sos = true; continue; }
       // «Кнопка: нет» — раздел без кнопки на главной лаборанта; находится только поиском
@@ -670,6 +681,7 @@ if (window.RH_LAB) {
   }).then(items => {
     listEl.innerHTML = "";
     const parsed = {};
+    const references = [];
     items.forEach(({ f, t }) => {
       if (t !== null) parsed[f.replace(/\.md$/i, "")] = t;
       if (t === null) {
@@ -694,13 +706,20 @@ if (window.RH_LAB) {
         '<div class="body">' + d.html +
         (d.sos ? '<button type="button" class="print-btn">🖨 Распечатать на стену</button>' : "") + "</div>";
       listEl.appendChild(sec);
+      if (!window.RH_LAB) {
+        references.push({
+          title: sec.querySelector(".t").textContent,
+          href: "#" + sec.id,
+          category: d.classification || sec.querySelector(".widget") ? "calculations" : "references"
+        });
+      }
     });
     listEl.querySelectorAll(".widget").forEach(el => {
       const fn = (window.RH_WIDGETS || {})[el.dataset.widget];
       if (fn) fn(el); else el.innerHTML = '<p class="err">Нет виджета «' + esc(el.dataset.widget) + '» в assets/js/widgets.js</p>';
     });
     setup();
-    if (!window.RH_LAB) templates(parsed);   // шаблоны заключений лаборанту не нужны
+    if (!window.RH_LAB) templates(parsed, references);   // шаблоны заключений лаборанту не нужны
   }).catch(() => {
     listEl.innerHTML = '<p class="err">Не удалось прочитать ru/order.txt.</p>';
     if (document.body.classList.contains("protocol-view")) templates({});
@@ -782,8 +801,29 @@ if (window.RH_LAB) {
     secs.forEach(s => s.addEventListener("toggle", () => {
       if (s.open && !q.value) history.replaceState(null, "", "#" + s.id);
     }));
-    const target = !window.RH_LAB && location.hash && document.getElementById(location.hash.slice(1));
-    if (!document.body.classList.contains("protocol-view") && target && target.tagName === "DETAILS") { target.open = true; target.scrollIntoView(); }
+    if (!window.RH_LAB) {
+      const findSection = hash => secs.find(s => "#" + s.id === hash);
+      const openLinkedSection = () => {
+        const target = findSection(location.hash);
+        if (!target || document.body.classList.contains("protocol-view")) return;
+        document.body.classList.remove("home");
+        target.open = true;
+        target.scrollIntoView();
+      };
+      openLinkedSection();
+      window.addEventListener("hashchange", e => {
+        if (findSection(location.hash)) openLinkedSection();
+        else if (!location.hash && !q.value && findSection(new URL(e.oldURL).hash)) {
+          document.getElementById("homeBtn").click();
+        }
+      });
+      catalog.addEventListener("click", e => {
+        const link = e.target.closest('a[href^="#"]');
+        if (link && link.hash === location.hash && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+          openLinkedSection();
+        }
+      });
+    }
   }
 
   /* ---------- Шаблоны заключений ---------- */
@@ -863,7 +903,54 @@ if (window.RH_LAB) {
     return url;
   }
 
-  function templates(sections) {
+  function renderCatalog(studies, references) {
+    const categories = new Map([
+      ["ct", "Компьютерная томография и ангиография"],
+      ["xr", "Рентгенография"],
+      ["mmg", "Маммография"],
+      ["dxa", "Денситометрия"],
+      ["constructors", "Интерактивные конструкторы"],
+      ["calculations", "Калькуляторы и классификации"],
+      ["references", "Справочники и памятки"]
+    ]);
+    const groupFor = v => {
+      if (v.kind === "page" || v.kind === "tool") return "constructors";
+      const modality = lower(v.modality);
+      if (modality.includes("кт")) return "ct";
+      if (modality.includes("рентген")) return "xr";
+      if (modality.includes("мамм") || modality === "ммг") return "mmg";
+      if (modality.includes("денсит")) return "dxa";
+      return "constructors";
+    };
+    const items = studies.map(({ title, variants: [v] }) => ({
+      title, href: protocolUrl(v).href, category: groupFor(v)
+    })).concat(references);
+    if (!items.length) return;
+
+    const groups = catalog.querySelector(".search-groups");
+    for (const [category, label] of categories) {
+      const entries = items.filter(item => item.category === category);
+      if (!entries.length) continue;
+      const group = document.createElement("details");
+      group.className = "search-group";
+      const summary = document.createElement("summary");
+      summary.textContent = label;
+      const list = document.createElement("ul");
+      for (const { title, href } of entries) {
+        const li = document.createElement("li");
+        const link = document.createElement("a");
+        link.textContent = title;
+        link.href = href;
+        li.append(link);
+        list.append(li);
+      }
+      group.append(summary, list);
+      groups.append(group);
+    }
+    catalog.hidden = false;
+  }
+
+  function templates(sections, references = []) {
     const readList = (dir, read) => fetch(dir + "order.txt", { cache: "no-cache" })
       .then(r => r.ok ? r.text() : "").then(txt => {
         const files = txt.split("\n").map(s => s.trim()).filter(s => s && !s.startsWith("#"));
@@ -879,6 +966,7 @@ if (window.RH_LAB) {
         if (!s) { s = { title: v.study, modality: v.modality, variants: [] }; studies.push(s); }
         s.variants.push(v);
       });
+      renderCatalog(studies, references);
       const hintCache = {};
       const hint = name => {
         if (sections[name] !== undefined) return Promise.resolve(sections[name]);
@@ -1046,9 +1134,9 @@ if (window.RH_LAB) {
       if (q.value) q.dispatchEvent(new Event("input"));
       else if (document.body.classList.contains("protocol-view")) {
         const id = new URLSearchParams(location.search).get("protocol");
-        const study = studies.find(s => s.variants.some(v => v.kind !== "tool" && protocolId(v) === id));
+        const study = studies.find(s => s.variants.some(v => protocolId(v) === id));
         if (study) {
-          const vi = study.variants.findIndex(v => v.kind !== "tool" && protocolId(v) === id);
+          const vi = study.variants.findIndex(v => protocolId(v) === id);
           render([study], study, vi);
         } else {
           studyEl.innerHTML = '<p class="empty" role="status">Шаблон по этой ссылке не найден. Воспользуйтесь поиском.</p>';
@@ -1462,6 +1550,7 @@ if (window.RH_LAB) {
     el.innerHTML = "";
     const parts = [], calcs = [], named = {}, linked = {}, toggles = {}, lists = [], lineEls = [];
     const willisFields = new Map();
+    let refreshArteries;
     const visibleWhen = new Map();
     const PH_OF = new Map();                    // «+ имя» пустого варианта → { group, inst }
     let missing = [];                           // незаполненное в копируемом тексте: [{ label, el }] — собирается при каждом text()
@@ -1648,6 +1737,7 @@ if (window.RH_LAB) {
       const show = groupShow(group);
       const next = () => {
         group.i = (group.i + 1) % Math.max(...group.insts.map(g => g.views.length));
+        group.edited = true;
         show();
         if (USED.has(key)) recalc();
       };
@@ -1668,6 +1758,7 @@ if (window.RH_LAB) {
         group.insts.forEach(g => g.update());
         lists.forEach(f => f());                                  // переключатель сменился — пересобрать перечни
         tidy();
+        refreshArteries?.();
       };
     }
     // Строка, где видно только «+ имя», а тот же переключатель уже показан выше с текстом (описание → заключение),
@@ -1708,7 +1799,9 @@ if (window.RH_LAB) {
       const inst = { views: opts.map(() => ({})), update: () => { sel.selectedIndex = group.i % opts.length; } };
       group.insts.push(inst);
       const show = groupShow(group);
-      sel.addEventListener("change", () => { group.i = sel.selectedIndex; show(); if (USED.has(key)) recalc(); });
+      sel.addEventListener("change", () => {
+        group.i = sel.selectedIndex; group.edited = true; show(); if (USED.has(key)) recalc();
+      });
       show();
       out.push(() => opts[group.i % opts.length]);
       target.append(sel);
@@ -1909,6 +2002,43 @@ if (window.RH_LAB) {
           for (const [key, span] of willisFields) span.textContent = result ? result[key] : "";
           tidy();
         });
+      } else if (line.trim() === "> {{СХЕМА АРТЕРИЙ}}") {
+        const details = document.createElement("details");
+        details.className = "leg-arteries-toggle";
+        const summary = document.createElement("summary");
+        summary.textContent = "Схема артерий";
+        const panel = document.createElement("div");
+        details.append(summary, panel);
+        reportSection.append(details);
+        const mount = () => {
+          if (!details.open) return;
+          details.removeEventListener("toggle", mount);
+          const group = name => toggles["#" + lower(name)];
+          const inputs = name => linked[lower(name)];
+          const state = window.bindLegArteriesTemplate({
+            group,
+            setGroup(name, i, edited = true) {
+              const control = group(name);
+              control.i = i;
+              control.edited = edited;
+              control.show();
+            },
+            field: name => inputs(name)[0].value,
+            setField(name, value) {
+              for (const field of inputs(name)) { field.value = value; sizeField(field); }
+            }
+          });
+          const render = window.createLegArteriesDiagram(panel, state);
+          let scheduled = false;
+          refreshArteries = () => {
+            if (!details.open || scheduled) return;
+            scheduled = true;
+            queueMicrotask(() => { scheduled = false; if (details.open && panel.isConnected) render(); });
+          };
+          details.addEventListener("toggle", refreshArteries);
+          el.addEventListener("input", event => { if (!panel.contains(event.target)) refreshArteries(); });
+        };
+        details.addEventListener("toggle", mount);
       } else if (ctl) {
         const box = document.createElement(folded ? "details" : "div");
         box.className = "ctl";
@@ -2118,13 +2248,10 @@ if (window.RH_LAB) {
 </script>
 
 <script>
-/* Примеры на главной и возврат домой.
-   Примеры: content/examples.txt — по одному на строке, при каждом открытии 3 случайных; клик подставляет текст в поиск.
-   Домой: кот слева от поиска или Esc в строке поиска — очищает запрос и возвращает на пустую главную.
+/* Кот слева от поиска или Esc в строке поиска очищает запрос и возвращает на пустую главную.
    Esc работает только в строке поиска: в полях шаблона он стёр бы всё, что врач уже набрал. */
 (function () {
   const q = document.getElementById("q");
-  const ex = document.getElementById("examples");
   const fine = window.matchMedia && matchMedia("(pointer: fine)").matches;   // мышь, а не палец: ставить курсор в поиск
 
   function home() {
@@ -2137,20 +2264,6 @@ if (window.RH_LAB) {
   }
   document.getElementById("homeBtn").addEventListener("click", home);
   q.addEventListener("keydown", e => { if (e.key === "Escape" && (q.value || document.body.classList.contains("protocol-view"))) { e.preventDefault(); home(); } });
-
-  if (window.RH_LAB || !ex || location.protocol === "file:") return;          // у лаборанта на главной кнопки разделов
-  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  fetch("content/examples.txt", { cache: "no-cache" }).then(r => r.ok ? r.text() : "").then(t => {
-    const all = t.replace(/\r/g, "").split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("#"));
-    if (!all.length) return;
-    for (let i = all.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [all[i], all[j]] = [all[j], all[i]]; }
-    ex.innerHTML = "Шаблоны заключений и подсказки для рентгенолога. Например: " +
-      all.slice(0, 3).map(x => '<span class="try" role="button" tabindex="0" data-q="' + esc(x) + '">' + esc(x) + "</span>").join(" · ");
-    ex.hidden = false;
-    const go = el => { q.value = el.dataset.q; q.dispatchEvent(new Event("input")); if (fine) q.focus(); };
-    ex.addEventListener("click", e => { const el = e.target.closest(".try"); if (el) go(el); });
-    ex.addEventListener("keydown", e => { const el = e.target.closest(".try"); if (el && e.key === "Enter") go(el); });
-  }).catch(() => {});
 })();
 </script>
 

@@ -1,0 +1,163 @@
+.leg-arteries-page, .leg-arteries {
+  --diagram-bg: #f7f7f5;
+  --diagram-card: #fff;
+  --diagram-ink: #1f2328;
+  --diagram-muted: #5f6670;
+  --diagram-line: #dcdfe3;
+  --diagram-head: #eef1f4;
+  --diagram-accent: #1d5fa8;
+  --on-accent: #fff;
+  --error: #b42318;
+  --normal: #c73245;
+  --unassessed: #747c86;
+  --yellow: #c49b00;
+  --orange: #cd660d;
+  --burgundy: #831b3c;
+  --purple: #7548af;
+  --occlusion: #08090a;
+  --occlusion-outline: #e3e6eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  .leg-arteries-page, .leg-arteries {
+    --diagram-bg: #121417;
+    --diagram-card: #1b1e22;
+    --diagram-ink: #e6e8eb;
+    --diagram-muted: #a7b0bb;
+    --diagram-line: #373e48;
+    --diagram-head: #242a32;
+    --diagram-accent: #92c3fb;
+    --on-accent: #141d27;
+    --error: #ff958b;
+    --normal: #ff6377;
+    --unassessed: #9ea6b0;
+    --yellow: #f0cc49;
+    --orange: #ffa152;
+    --burgundy: #b84c70;
+    --purple: #bf95f8;
+    --occlusion-outline: #dde2e9;
+  }
+}
+
+.leg-arteries *, .leg-arteries-page * { box-sizing: border-box; }
+.leg-arteries-page { margin: 0; background: var(--bg, var(--diagram-bg)); color: var(--ink, var(--diagram-ink)); font: 16px/1.5 system-ui, sans-serif; }
+.leg-arteries-page .shell { width: min(100%, 880px); margin-inline: auto; padding-inline: 16px; }
+.leg-arteries-page .site-header { background: var(--card, var(--diagram-card)); border-bottom: 1px solid var(--line, var(--diagram-line)); padding: 12px 0; }
+.leg-arteries-page main { padding-block: 20px 44px; }
+.leg-arteries-page h1 { margin: 0; font-size: clamp(1.45rem, 4vw, 2rem); line-height: 1.2; }
+:is(.leg-arteries, .leg-arteries-page) h2 { margin: 0; font-size: 1.05rem; line-height: 1.3; }
+.leg-arteries-page .intro { margin: 6px 0 16px; }
+.intro, .muted { color: var(--muted, var(--diagram-muted)); font-size: .9rem; }
+:is(.leg-arteries, .leg-arteries-page) .card { min-width: 0; border: 1px solid var(--line, var(--diagram-line)); border-radius: 12px; background: var(--card, var(--diagram-card)); }
+.diagram-layout { display: grid; grid-template-columns: minmax(0, 1.26fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.diagram-card { margin: 0; padding: 8px; }
+.diagram-card figcaption {
+  display: grid; place-items: center; block-size: 3.6em; padding: 4px 6px; overflow: auto;
+  color: var(--ink, var(--diagram-ink)); background: var(--head, var(--diagram-head)); border-radius: 7px; font-size: .85rem; text-align: center;
+}
+#artery-diagram { display: block; width: 100%; max-width: 370px; height: auto; margin-inline: auto; }
+.region-lines { fill: none; stroke: var(--line, var(--diagram-line)); stroke-dasharray: 3 4; pointer-events: none; }
+.side-label { fill: var(--muted, var(--diagram-muted)); text-anchor: middle; font-size: 13px; font-weight: 650; }
+
+[data-visual="normal"] { --vessel: var(--normal); }
+[data-visual="stenosis-low"] { --vessel: var(--yellow); }
+[data-visual="stenosis-middle"] { --vessel: var(--orange); }
+[data-visual="stenosis-high"] { --vessel: var(--burgundy); }
+[data-visual="aneurysm"] { --vessel: var(--purple); }
+[data-visual="unassessed"], [data-visual="limited"], [data-visual="stenosis-pending"] { --vessel: var(--unassessed); }
+[data-visual="occlusion"] { --vessel: var(--occlusion); }
+
+.artery-segment { cursor: pointer; touch-action: manipulation; }
+.artery-segment path { fill: none; vector-effect: non-scaling-stroke; }
+.vessel-hit { stroke: transparent; stroke-width: 25; stroke-linecap: round; pointer-events: stroke; }
+.vessel-line { stroke: var(--vessel); stroke-linecap: round; pointer-events: none; }
+.vessel-highlight { stroke: var(--accent, var(--diagram-accent)); stroke-linecap: round; opacity: 0; pointer-events: none; }
+.vessel-keyline { display: none; pointer-events: none; }
+[data-visual="occlusion"] .vessel-keyline { display: block; stroke: var(--occlusion-outline); stroke-dasharray: 8 6; }
+[data-visual="occlusion"] .vessel-line, [data-visual="limited"] .vessel-line { stroke-dasharray: 8 6; stroke-linecap: butt; }
+[data-visual="stenosis-pending"] .vessel-line { stroke-dasharray: .1 10; }
+.vessel-chip { fill: var(--card, var(--diagram-card)); stroke: var(--line, var(--diagram-line)); }
+.vessel-label { fill: var(--ink, var(--diagram-ink)); text-anchor: middle; font-size: 11px; font-weight: 670; pointer-events: none; }
+.artery-segment:focus { outline: none; }
+.artery-segment:is(:focus-visible, [data-editing]) .vessel-highlight { opacity: 1; }
+.artery-segment:is(:focus-visible, [data-editing]) .vessel-chip { stroke: var(--accent, var(--diagram-accent)); stroke-width: 2; }
+@media (hover: hover) {
+  .artery-segment:hover .vessel-highlight { opacity: 1; }
+  .artery-segment:hover .vessel-chip { stroke: var(--accent, var(--diagram-accent)); stroke-width: 2; }
+}
+
+.leg-arteries .controls { padding: 15px; }
+.leg-arteries .legend { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 7px; font-size: .9rem; }
+.leg-arteries .legend li { display: flex; align-items: center; gap: 10px; }
+.swatch { flex: 0 0 24px; height: 0; border-top: 4px solid var(--vessel); border-radius: 2px; }
+.swatch:is([data-visual="occlusion"], [data-visual="limited"]) { border-top-style: dashed; }
+.swatch[data-visual="occlusion"] { filter: drop-shadow(0 1px var(--occlusion-outline)) drop-shadow(0 -1px var(--occlusion-outline)); }
+.swatch[data-visual="stenosis-pending"] { border-top-style: dotted; }
+.diagram-actions { display: grid; justify-items: start; gap: 8px; border-top: 1px solid var(--line, var(--diagram-line)); }
+#progress { margin: 12px 0 0; color: var(--muted, var(--diagram-muted)); font-size: .9rem; }
+
+:is(.leg-arteries, .leg-arteries-page) :is(button, input, select) {
+  font: inherit;
+  min-height: 44px; padding: 7px 10px; border: 1px solid var(--line, var(--diagram-line)); border-radius: 8px;
+  color: var(--ink, var(--diagram-ink)); background: var(--card, var(--diagram-card));
+}
+:is(.leg-arteries, .leg-arteries-page) button { cursor: pointer; font-size: .88rem; font-weight: 650; text-align: center; }
+:is(.leg-arteries, .leg-arteries-page) button:hover:not(:disabled) { border-color: var(--accent, var(--diagram-accent)); }
+:is(.leg-arteries, .leg-arteries-page) button:disabled { cursor: default; opacity: .55; }
+:is(.leg-arteries, .leg-arteries-page) :is(button, input, select, a):focus-visible { outline: 2px solid var(--accent, var(--diagram-accent)); outline-offset: 2px; }
+:is(.leg-arteries, .leg-arteries-page) .primary { background: var(--accent, var(--diagram-accent)); color: var(--on-accent); border-color: var(--accent, var(--diagram-accent)); }
+
+.leg-arteries-page .reports { display: grid; gap: 10px; margin-top: 15px; }
+.leg-arteries-page .reports > p { margin: 0; }
+.leg-arteries-page .report { padding: 12px 14px; }
+.leg-arteries-page .report-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; }
+.leg-arteries-page .report-text { margin-top: 6px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .95rem; }
+.leg-arteries-page .conclusion { border-inline-start: 4px solid var(--accent, var(--diagram-accent)); background: var(--head, var(--diagram-head)); }
+
+:is(.leg-arteries, .leg-arteries-page) dialog {
+  width: min(440px, calc(100% - 24px)); max-height: calc(100dvh - 24px); padding: 16px;
+  color: var(--ink, var(--diagram-ink)); background: var(--card, var(--diagram-card)); border: 1px solid var(--line, var(--diagram-line)); border-radius: 12px;
+}
+:is(.leg-arteries, .leg-arteries-page) dialog h2 { margin-bottom: 10px; }
+:is(.leg-arteries, .leg-arteries-page) dialog::backdrop { background: rgb(0 0 0 / .42); }
+:is(.leg-arteries, .leg-arteries-page) .fields { display: grid; gap: 9px; margin-top: 9px; }
+:is(.leg-arteries, .leg-arteries-page) .field { display: grid; gap: 3px; }
+:is(.leg-arteries, .leg-arteries-page) .field span { font-size: .88rem; }
+:is(.leg-arteries, .leg-arteries-page) .field :is(input, select) { width: 100%; min-width: 0; }
+:is(.leg-arteries, .leg-arteries-page) .field-error { color: var(--error); }
+:is(.leg-arteries, .leg-arteries-page) .field [aria-invalid="true"] { border-color: var(--error); }
+.location-field { min-width: 0; margin: 0; padding: 0; border: 0; }
+.location-field legend { margin-bottom: 3px; padding: 0; font-size: .88rem; }
+.location-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.location-choices [aria-pressed="true"] { border-color: var(--accent, var(--diagram-accent)); background: var(--head, var(--diagram-head)); color: var(--accent, var(--diagram-accent)); }
+.editor-actions { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.leg-arteries-page .clipboard-buffer { position: fixed; inset: 0 auto auto 0; opacity: 0; width: 1px; height: 1px; }
+.leg-arteries-page .copy-status:not(:empty) {
+  position: fixed; z-index: 1; inset: auto 12px max(12px, env(safe-area-inset-bottom));
+  width: fit-content; max-width: calc(100% - 24px); margin-inline: auto; padding: 8px 14px;
+  border-radius: 8px; color: var(--card, var(--diagram-card)); background: var(--ink, var(--diagram-ink)); font-size: .9rem;
+}
+
+@media (max-width: 620px) {
+  .leg-arteries-page .shell { padding-inline: 10px; }
+  .diagram-layout { grid-template-columns: minmax(0, 1fr); }
+  .diagram-card { padding: 5px; }
+  .diagram-card figcaption { block-size: 5em; }
+}
+
+.tpl .leg-arteries { white-space: normal; font: .95rem/1.45 system-ui, sans-serif; margin: 8px 0; }
+.leg-arteries-toggle { margin-bottom: 8px; }
+.leg-arteries-toggle > summary {
+  display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 6px 12px;
+  border: 1px solid var(--line); border-radius: 9px; color: var(--accent); background: var(--card);
+  font-weight: 600; cursor: pointer; list-style: none;
+}
+.leg-arteries-toggle > summary::-webkit-details-marker { display: none; }
+.leg-arteries-toggle > summary::after { content: "⌄"; }
+.leg-arteries-toggle[open] > summary::after { content: "⌃"; }
+.leg-arteries :is(.artery-editor-note, .artery-template-note) { margin: 8px 0; }
+
+@media (prefers-color-scheme: dark) {
+  .leg-arteries-page, :root:not([data-theme="light"]) .leg-arteries { color-scheme: dark; }
+}
+:root[data-theme="dark"] .leg-arteries { color-scheme: dark; }
