@@ -21,10 +21,10 @@
   <a class="side-link" id="sideLink" href="./?lab">Помощник лаборанта →</a>
   <!-- Экстренное (разделы со строкой «Срочно:»): у лаборанта — красными кнопками в самом верху главной -->
   <nav class="soslinks" id="sosLinks" aria-label="Экстренные ситуации" hidden></nav>
-  <a class="rh-logo rh-home" href="./" aria-label="RadHelper — на главную"><img src="img/brand-slice.png" alt=""><span class="rh-rad"></span><span class="rh-helper"></span></a>
-  <img class="cat" src="img/doctor-cat.jpg" alt="Кот в медицинском халате" width="240">
+  <a class="rh-logo rh-home" href="./" aria-label="RadHelper — на главную"><img src="assets/img/brand-slice.png" alt=""><span class="rh-rad"></span><span class="rh-helper"></span></a>
+  <img class="cat" src="assets/img/doctor-cat.jpg" alt="Кот в медицинском халате" width="240">
   <div class="wrap bar">
-    <button type="button" class="home-btn rh-logo" id="homeBtn" aria-label="На главную" title="На главную"><img src="img/brand-slice.png" alt=""><span class="rh-rad"></span><span class="rh-helper"></span></button>
+    <button type="button" class="home-btn rh-logo" id="homeBtn" aria-label="На главную" title="На главную"><img src="assets/img/brand-slice.png" alt=""><span class="rh-rad"></span><span class="rh-helper"></span></button>
     <input id="q" type="search" placeholder="Что описываем?" autofocus autocomplete="off" enterkeyhint="search" aria-label="Поиск">
   </div>
   <details class="catalog wrap" id="catalog" hidden>
@@ -44,7 +44,7 @@
 
 <footer class="wrap">
   <p>Справочный материал для врачей и ординаторов, не клиническая рекомендация.</p>
-  <p>© 2026 Е. А. Круглов · <a href="terms.html">Условия использования RadHelper</a> · <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.ru" rel="license">CC BY-NC 4.0</a></p>
+  <p>© 2026 Е. А. Круглов · <a href="pages/terms.html">Условия использования RadHelper</a> · <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.ru" rel="license">CC BY-NC 4.0</a></p>
   <p>Поругать автора: <a href="https://t.me/klatrinsky" target="_blank" rel="noopener">Telegram</a> · <a href="mailto:klatrinsky@gmail.com?subject=rad-helper%3A%20%D0%B7%D0%B0%D0%BC%D0%B5%D1%87%D0%B0%D0%BD%D0%B8%D0%B5">Email</a></p>
   <p id="lastUpdate" hidden></p>
 </footer>
@@ -81,13 +81,13 @@
 <script>
 /* =====================================================================
    Менять этот файл не нужно.
-   Тексты лежат в папке ru/, порядок разделов — в ru/order.txt.
-   Шаблоны заключений — в папке templates/, порядок — в templates/order.txt.
-   Находки («что я нашёл») — в папке tools/, порядок — в tools/order.txt, движок — assets/js/findings.js.
+   Тексты лежат в папке content/guides/, порядок разделов — в content/guides/order.txt.
+   Шаблоны заключений — в папке content/templates/, порядок — в content/templates/order.txt.
+   Находки («что я нашёл») — в папке content/findings/, порядок — в content/findings/order.txt, движок — assets/js/findings.js.
    Как оформлять тексты — см. docs/SYNTAX.md.
    ===================================================================== */
 (function () {
-  const DIR = "ru/";
+  const DIR = "content/guides/";
   const listEl = document.getElementById("list");
   const noteEl = document.getElementById("note");
   const q = document.getElementById("q");
@@ -159,9 +159,14 @@
       // нумерованный список: «1. Остановить введение»
       const ol = t.match(/^\d+[.)] (.*)$/);
       if (ol) { flushP(); if (ltag !== "ol") flushL(); ltag = "ol"; list.push(ol[1]); continue; }
-      // картинка: ![подпись](img/файл.svg) — отдельной строкой
-      const im = t.match(/^!\[([^\]]*)\]\(((?:img\/|https:\/\/)[^)\s]+)\)$/);
-      if (im) { flush(); html += '<img class="pic" data-hint-src="' + esc(im[2]) + '" alt="' + esc(im[1]) + '" loading="lazy">'; continue; }
+      // картинка: ![подпись](assets/img/файл.svg) — отдельной строкой
+      const im = t.match(/^!\[([^\]]*)\]\(((?:assets\/img\/|img\/|https:\/\/)[^)\s]+)\)$/);
+      if (im) {
+        flush();
+        const src = im[2].replace(/^img\//, "assets/img/");
+        html += '<img class="pic" data-hint-src="' + esc(src) + '" alt="' + esc(im[1]) + '" loading="lazy">';
+        continue;
+      }
       if (/^`[^`]+`$/.test(t)) { flush(); html += '<code class="formula">' + esc(t.slice(1, -1)) + "</code>"; continue; }
       if (/^(Источник|Radiopaedia):/.test(t)) { flush(); html += '<p class="src">' + inline(t) + "</p>"; continue; }
       flushL(); para.push(t);
@@ -244,7 +249,7 @@
     setup();
     if (!window.RH_LAB) templates(parsed, references);   // шаблоны заключений лаборанту не нужны
   }).catch(() => {
-    listEl.innerHTML = '<p class="err">Не удалось прочитать ru/order.txt.</p>';
+    listEl.innerHTML = '<p class="err">Не удалось прочитать content/guides/order.txt.</p>';
     if (document.body.classList.contains("protocol-view")) templates({});
   });
 
@@ -290,7 +295,8 @@
   }
 
   /* ---------- Шаблоны заключений ---------- */
-  const TDIR = "templates/";
+  const TDIR = "content/templates/";
+  const FDIR = "content/findings/";
   const studyEl = document.getElementById("study");
   const toastEl = document.getElementById("toast");
   const lower = s => s.toLowerCase().replace(/ё/g, "е");
@@ -316,7 +322,7 @@
     const page = meta["страница"] || "";
     if (page && !/^[a-z0-9_-]+\.html$/i.test(page)) return null;
     return {
-      f, study, text, kind: page ? "page" : "template", page,
+      f, study, text, kind: page ? "page" : "template", page: page ? "pages/" + page : "",
       variant: meta["вариант"] || "Основной",
       modality: meta["модальность"] || "",
       alert: meta["внимание"] || "",
@@ -325,7 +331,7 @@
     };
   }
 
-  // Находка (tools/*.md): та же шапка, но «Находка:» вместо «Исследование:»
+  // Находка (content/findings/*.md): та же шапка, но «Находка:» вместо «Исследование:»
   function readTool(f, t) {
     const lines = t.replace(/\r/g, "").split("\n");
     const cut = lines.findIndex(l => l.trim() === "---");
@@ -373,7 +379,7 @@
         return Promise.all(files.map(f => fetch(dir + f, { cache: "no-cache" })
           .then(r => r.ok ? r.text() : null).then(t => t === null ? null : read(f, t), () => null)));
       }, () => []);
-    Promise.all([readList(TDIR, readTemplate), readList("tools/", readTool)]).then(([tl, fl]) => {
+    Promise.all([readList(TDIR, readTemplate), readList(FDIR, readTool)]).then(([tl, fl]) => {
       const list = tl.concat(fl);
       const variants = list.filter(Boolean);
       const studies = [];
@@ -444,7 +450,7 @@
           url.searchParams.set("protocol", protocolId(v));
           history.replaceState(null, "", url);
         }
-        studyEl.dataset.src = (v.kind === "tool" ? "tools/" : TDIR) + v.f;
+        studyEl.dataset.src = (v.kind === "tool" ? FDIR : TDIR) + v.f;
         studyEl.innerHTML =
           searchChoices(found, s) +
           '<div><h2>' + esc(s.title) + "</h2>" +
@@ -574,7 +580,7 @@
       ? 'D. J. Solomon, P. McLoughlin. <a href="https://assets.cureus.com/uploads/original_article/pdf/420801/20251029-207681-fherkc.pdf#page=3" target="_blank" rel="noopener">Cureus, 2025, рис. 1–5</a> · Размер снимков уменьшен.'
       : 'R. M. Huzum и соавт. <a href="https://mdpi-res.com/d_attachment/diagnostics/diagnostics-15-01932/article_deploy/diagnostics-15-01932.pdf?version=1753970717#page=5" target="_blank" rel="noopener">Diagnostics, 2025, рис. 2</a> · Панели разделены на отдельные снимки.';
     const figures = Array.from({ length: 5 }, (_, grade) => {
-      const src = "img/" + folder + "/kl-" + grade + ".jpg";
+      const src = "assets/img/" + folder + "/kl-" + grade + ".jpg";
       const alt = "Рентгенограмма " + anatomy + ", степень " + grade;
       return '<figure><button type="button" class="kl-zoom" aria-haspopup="dialog" aria-label="Увеличить снимок: степень ' + grade +
         '"><img data-hint-src="' + src + '" loading="lazy" alt="' + alt + '"></button><figcaption>Степень ' + grade + '</figcaption></figure>';
@@ -593,7 +599,7 @@
     ];
     const figures = images.map(([file, caption]) =>
       '<figure><button type="button" class="kl-zoom" aria-haspopup="dialog" aria-label="Увеличить: ' +
-      caption + '"><img data-hint-src="img/postop/' + file + '" loading="lazy" alt="' + caption +
+      caption + '"><img data-hint-src="assets/img/postop/' + file + '" loading="lazy" alt="' + caption +
       '"></button><figcaption>' + caption + '</figcaption></figure>').join("");
     const source = hip
       ? 'J. Vanrusselt и соавт. <a href="https://doi.org/10.1007/s13244-015-0438-5" target="_blank" rel="noopener">Insights into Imaging, 2015, рис. 7, 4 и 6</a>.'
@@ -609,7 +615,7 @@
     ];
     const figures = images.map(([file, caption]) =>
       '<figure><button type="button" class="kl-zoom" aria-haspopup="dialog" aria-label="Увеличить: ' +
-      caption + '"><img data-hint-src="img/temporal/' + file + '" loading="lazy" alt="' + caption +
+      caption + '"><img data-hint-src="assets/img/temporal/' + file + '" loading="lazy" alt="' + caption +
       '"></button><figcaption>' + caption + '</figcaption></figure>').join("");
     const source = 'P. Touska, S. E. J. Connor. <a href="https://link.springer.com/article/10.1007/s00330-024-11021-x#Fig1" target="_blank" rel="noopener">European Radiology, 2025, рис. 1</a> и <a href="https://link.springer.com/article/10.1007/s00330-024-11021-x#Fig3" target="_blank" rel="noopener">рис. 3</a>. ' +
       'P. Feraco, S. Piccinini, C. Gagliardo. <a href="https://link.springer.com/article/10.1007/s11547-021-01387-z#Fig3" target="_blank" rel="noopener">La Radiologia Medica, 2021, рис. 3</a>.';
@@ -645,7 +651,7 @@
   function addGcaGuide(el) {
     const caption = "Корковая атрофия от 0 до 3 степени слева направо. Аксиальные срезы бесконтрастной КТ.";
     const figure = '<figure class="gca-figure"><button type="button" class="kl-zoom" aria-haspopup="dialog" aria-label="Увеличить рисунок GCA">' +
-      '<img data-hint-src="img/gca-ct.webp" width="1773" height="691" loading="lazy" alt="' + caption + '"></button>' +
+      '<img data-hint-src="assets/img/gca-ct.webp" width="1773" height="691" loading="lazy" alt="' + caption + '"></button>' +
       '<figcaption>' + caption + '</figcaption></figure>';
     const source = '© 2023 Brugnara и соавт. <a href="https://link.springer.com/article/10.1007/s00330-023-10107-2#Fig1" ' +
       'target="_blank" rel="noopener">European Radiology, рис. 1</a>. Показан верхний ряд оригинала.';
@@ -671,7 +677,7 @@
     panel.id = "evans-guide";
     panel.className = "measure-help";
     panel.hidden = true;
-    panel.innerHTML = '<img data-hint-src="img/evans-index.svg" width="210" height="175" loading="lazy" alt="Схема аксиального среза с линиями A и B">' +
+    panel.innerHTML = '<img data-hint-src="assets/img/evans-index.svg" width="210" height="175" loading="lazy" alt="Схема аксиального среза с линиями A и B">' +
       '<div class="measure-help-copy"><p><strong>Индекс Эванса = A / B</strong></p>' +
       '<p><b>A</b> — максимальная ширина передних рогов боковых желудочков.</p>' +
       '<p><b>B</b> — максимальный внутренний поперечник черепа на том же аксиальном срезе.</p>' +

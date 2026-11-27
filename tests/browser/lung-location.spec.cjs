@@ -8,7 +8,7 @@ const save = page => form(page).getByRole('button', { name: 'Добавить н
 
 test('сначала выбирается сегмент, затем сохраняется находка и копируется текст', async ({ page, context }, info) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto('/lung-segments.html');
+  await page.goto('/pages/lung-segments.html');
   await expect(page.getByRole('heading', { name: 'Рентгенография ОГК' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'КТ ОГК', exact: true })).toHaveCount(0);
   const copy = page.getByRole('button', { name: 'Скопировать фрагмент' });
@@ -44,7 +44,7 @@ test('сначала выбирается сегмент, затем сохра�
 
 test('три проекции, доли и поля на узкой ширине и в тёмной теме', async ({ page }, info) => {
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.goto('/lung-segments.html');
+  await page.goto('/pages/lung-segments.html');
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(18, 28, 32)');
   const right = figure(page, 'rightLateral');
   const front = figure(page, 'front');
@@ -86,7 +86,7 @@ test('три проекции, доли и поля на узкой ширине
 });
 
 test('сохранённые находки можно менять независимо и выбирать сегменты из списка', async ({ page }) => {
-  await page.goto('/lung-segments.html');
+  await page.goto('/pages/lung-segments.html');
   await area(page, 'front', 'segments', 'left-s1+2').press('Enter');
   await form(page).getByRole('combobox', { name: 'Находка', exact: true }).selectOption('other');
   await expect(form(page).getByRole('button', { name: 'Добавить находку' })).toBeDisabled();
@@ -107,7 +107,7 @@ test('сохранённые находки можно менять незави
 });
 
 test('подписи сегментов находятся внутри собственных контуров во всех проекциях', async ({ page }, info) => {
-  await page.goto('/lung-segments.html');
+  await page.goto('/pages/lung-segments.html');
   for (const [projection, label, count] of [['front', 'Прямая', 13], ['rightLateral', 'Правая боковая', 8], ['leftLateral', 'Левая боковая', 8]]) {
     if (info.project.use.hasTouch) await page.getByRole('button', { name: label, exact: true }).click();
     const regions = figure(page, projection).locator('svg [data-choice="segments"]');
@@ -125,7 +125,7 @@ test('подписи сегментов находятся внутри собс
 
 test('характеристики образования и лёгочного рисунка сохраняются раздельно и копируются', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto('/lung-segments.html');
+  await page.goto('/pages/lung-segments.html');
   await area(page, 'front', 'segments', 'right-s3').press('Enter');
   const chooser = form(page);
   const kind = chooser.getByRole('combobox', { name: 'Находка', exact: true });

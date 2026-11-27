@@ -66,7 +66,7 @@ def check(page, url):
     destination = urlsplit(feedback["url"])
     assert destination.netloc == "forms.yandex.ru"
     params = parse_qs(destination.query)
-    assert params == {"Source": ["templates/dxa.md"], "Fragment": ["Обезличенный пример"]}, params
+    assert params == {"Source": ["content/templates/dxa.md"], "Fragment": ["Обезличенный пример"]}, params
     assert "noreferrer" in feedback["features"].split(",")
 
     page.evaluate("delete window.feedbackLink")
@@ -74,7 +74,7 @@ def check(page, url):
     fragment.fill("")
     dialog.get_by_role("button", name="Открыть Яндекс Форму").click()
     feedback = page.evaluate("window.feedbackLink")
-    assert parse_qs(urlsplit(feedback["url"]).query) == {"Source": ["templates/dxa.md"]}
+    assert parse_qs(urlsplit(feedback["url"]).query) == {"Source": ["content/templates/dxa.md"]}
     print("PASS feedback previews the selection and allows cancellation, editing, and removal")
 
     form.get_by_text("Первичное исследование", exact=True).click()
@@ -114,7 +114,7 @@ def check(page, url):
 
 
 if __name__ == "__main__":
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     handler = partial(SimpleHTTPRequestHandler, directory=str(root))
     with ThreadingHTTPServer(("127.0.0.1", 0), handler) as server, sync_playwright() as pw:
         Thread(target=server.serve_forever, daemon=True).start()

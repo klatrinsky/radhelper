@@ -154,7 +154,7 @@ test("FRAX: сравнение с порогом вмешательства дл
 
 /* ---------- Сквозная проверка: шаблон целиком ---------- */
 function template(file) {
-  const text = read("templates/" + file).replace(/\r/g, "").split("\n---\n").slice(1).join("\n---\n");
+  const text = read("content/templates/" + file).replace(/\r/g, "").split("\n---\n").slice(1).join("\n---\n");
   const el = W.document.createElement("div");
   W.document.body.appendChild(el);
   const tpl = W.RH_TEMPLATE(text, el);
@@ -627,7 +627,7 @@ test("Шаблоны позвоночника описывают компрес�
 });
 
 test("конструктор переломов: формулировка диагноза объединяет суставное вовлечение и вколочение", () => {
-  const dom = new JSDOM(read("fractures.html"), { runScripts: "dangerously" });
+  const dom = new JSDOM(read("pages/fractures.html"), { runScripts: "dangerously" });
   try {
     const { document, Event } = dom.window;
     const output = id => document.getElementById(id).textContent;

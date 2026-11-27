@@ -13,7 +13,7 @@ test("прямая ссылка выбирает вкладку, а кнопка
   t.after(() => w.close());
   const $ = selector => w.document.querySelector(selector);
   assert.deepEqual(w.__errors, []);
-  assert.equal($("#study").dataset.src, "templates/ct-brain-short.md");
+  assert.equal($("#study").dataset.src, "content/templates/ct-brain-short.md");
   assert.equal($(".tab[aria-selected=true]").textContent, "Кратко");
   assert.ok($(".hints details"));
 
@@ -32,7 +32,7 @@ test("прямая ссылка выбирает вкладку, а кнопка
 
   search(w, "денситометрия");
   assert.equal(w.location.search, "");
-  assert.equal($("#study").dataset.src, "templates/dxa.md");
+  assert.equal($("#study").dataset.src, "content/templates/dxa.md");
   $("#homeBtn").click();
   assert.equal($("#study").hidden, true);
   assert.ok(w.document.body.classList.contains("home"));
@@ -45,7 +45,7 @@ test("неизвестная ссылка оставляет доступ к п�
   assert.match($("#study [role=status]").textContent, /не найден/);
   search(w, "переломы");
   const app = $("#study .app-entry a");
-  assert.equal(app.getAttribute("href"), "fractures.html");
+  assert.equal(app.getAttribute("href"), "pages/fractures.html");
   w.document.execCommand = () => {
     assert.equal($("textarea[readonly]").value, app.href);
     return true;
@@ -141,7 +141,7 @@ test("КТ почек: можно вернуться к автоматическ
       mode.selectedIndex = index;
       mode.dispatchEvent(new w.Event("change", { bubbles: true }));
     };
-    assert.equal($("#study").dataset.src, "templates/" + id + ".md");
+    assert.equal($("#study").dataset.src, "content/templates/" + id + ".md");
     assert.equal(mode.selectedIndex, 0);
     assert.ok(field.closest(".ln").hidden);
     conclusion.click();
@@ -236,7 +236,7 @@ test("КТ поясничного отдела синхронизирует уг
 });
 
 test("каждый вариант из каталога имеет уникальный идентификатор ссылки", () => {
-  const files = read("templates/order.txt").split("\n").map(line => line.trim())
+  const files = read("content/templates/order.txt").split("\n").map(line => line.trim())
     .filter(line => line && !line.startsWith("#"));
   const ids = files.map(file => file.replace(/\.md$/i, ""));
   assert.equal(new Set(ids).size, ids.length);
@@ -252,7 +252,7 @@ test("заголовок новостей открывает архив, усл�
   assert.equal(w.document.querySelectorAll("#news ul").length, 1);
   assert.equal(w.document.querySelectorAll("#news li").length, 7);
   assert.equal($("footer #newsArchiveBtn"), null);
-  assert.equal($("footer p:nth-child(2) a").getAttribute("href"), "terms.html");
+  assert.equal($("footer p:nth-child(2) a").getAttribute("href"), "pages/terms.html");
   assert.match($("footer #lastUpdate").textContent, /^Последнее обновление: \d{2}\.\d{2}\.\d{4}$/);
   assert.match(read("LICENSE"), /CC BY-NC 4\.0/);
 
@@ -279,7 +279,7 @@ test("КТ височных костей: галерея открывает ло
   await opened;
   for (const image of images) {
     const src = image.getAttribute("src");
-    assert.match(src, /^img\/temporal\//);
+    assert.match(src, /^assets\/img\/temporal\//);
     image.closest("button").click();
     assert.ok(dialog.open);
     assert.equal(dialog.querySelector("img").getAttribute("src"), src);

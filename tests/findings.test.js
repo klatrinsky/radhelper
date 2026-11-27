@@ -1,4 +1,4 @@
-/* Находки (tools/*.md через assets/js/findings.js): какой вывод получит врач при заданных признаках.
+/* Находки (content/findings/*.md через assets/js/findings.js): какой вывод получит врач при заданных признаках.
    Пороги — по источникам из самих файлов: ACR/ESE (надпочечник), LI-RADS v2018 / ACR (печень), Fleischner 2017 (лёгкое). */
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -10,7 +10,7 @@ test.after(() => W?.close());
 
 // как в интерфейсе: кнопки — первый вариант по умолчанию, поля — пусто; дальше — что «нажал» тест
 function verdict(file, set) {
-  const tool = F.parse(read("tools/" + file).replace(/\r/g, "").split("\n---\n").slice(1).join("\n---\n"));
+  const tool = F.parse(read("content/findings/" + file).replace(/\r/g, "").split("\n---\n").slice(1).join("\n---\n"));
   const state = {};
   tool.params.forEach(p => { state[p.id] = p.kind === "pick" ? p.options[0] : ""; });
   for (const [k, v] of Object.entries(set)) {
@@ -129,7 +129,7 @@ test("Fleischner: субсолидные", () => {
 });
 
 test("надпочечник: портальная не выше нативной — подсказка «накопления нет» (раньше не срабатывала)", () => {
-  const tool = F.parse(read("tools/adrenal-mass.md").replace(/\r/g, "").split("\n---\n").slice(1).join("\n---\n"));
+  const tool = F.parse(read("content/findings/adrenal-mass.md").replace(/\r/g, "").split("\n---\n").slice(1).join("\n---\n"));
   const notes = s => {
     const state = {};
     tool.params.forEach(p => { state[p.id] = p.kind === "pick" ? p.options[0] : ""; });

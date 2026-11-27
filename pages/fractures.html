@@ -22,17 +22,17 @@
     @media(max-width:920px){.layout{grid-template-columns:1fr}.preview{position:static}.shell{padding:0 12px 40px}.topinner{padding:12px}.hero{padding-top:22px}.panelbody{padding:14px}.panelhead{padding:13px 14px}}
     @media(max-width:460px){.fields,.subgrid{grid-template-columns:1fr}.seg button{font-size:12px}.hero h1{font-size:27px}.report{padding:12px}.row.mobilewrap{flex-wrap:wrap}}
   </style>
-<link rel="stylesheet" href="assets/css/brand.css">
-<link rel="icon" href="assets/icons/favicon.ico?v=perfusion" sizes="16x16 32x32 48x48">
-<link rel="icon" href="assets/icons/favicon.svg?v=perfusion" type="image/svg+xml" sizes="any">
-<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=perfusion" sizes="180x180">
+<link rel="stylesheet" href="../assets/css/brand.css">
+<link rel="icon" href="../assets/icons/favicon.ico?v=perfusion" sizes="16x16 32x32 48x48">
+<link rel="icon" href="../assets/icons/favicon.svg?v=perfusion" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png?v=perfusion" sizes="180x180">
 </head>
 <body>
-  <div class="topbar"><div class="topinner"><a class="rh-logo" href="./" aria-label="RadHelper — на главную"><img src="img/brand-slice.png" alt=""><span class="rh-rad"></span><span class="rh-helper"></span></a></div></div>
+  <div class="topbar"><div class="topinner"><a class="rh-logo" href="../" aria-label="RadHelper — на главную"><img src="../assets/img/brand-slice.png" alt=""><span class="rh-rad"></span><span class="rh-helper"></span></a></div></div>
   <main class="shell">
-    <section class="hero" data-feedback-source="fractures.html · Интерфейс конструктора переломов"><div class="eyebrow">Рентгенография · интерактивный шаблон</div><h1>Конструктор переломов</h1><p>Укажите область, локализацию и признаки перелома. Описание и заключение сформируются автоматически. Для нескольких повреждений добавьте ещё один перелом.</p></section>
+    <section class="hero" data-feedback-source="pages/fractures.html · Интерфейс конструктора переломов"><div class="eyebrow">Рентгенография · интерактивный шаблон</div><h1>Конструктор переломов</h1><p>Укажите область, локализацию и признаки перелома. Описание и заключение сформируются автоматически. Для нескольких повреждений добавьте ещё один перелом.</p></section>
     <div class="layout" data-feedback-help>
-      <div class="stack" id="editor" data-feedback-source="fractures.html · Интерфейс конструктора переломов">
+      <div class="stack" id="editor" data-feedback-source="pages/fractures.html · Интерфейс конструктора переломов">
         <section class="panel">
           <div class="panelhead"><h2>01 · Исследование</h2><span class="pill">Общие данные</span></div>
           <div class="panelbody fields">
@@ -49,11 +49,11 @@
         <section class="panel"><div class="panelbody"><div class="row between mobilewrap"><div><strong>Ограничения</strong><div class="quiet">Конструктор не оценивает снимки самостоятельно и не определяет несращение по отдельному признаку. Проверяйте формулировки перед использованием.</div></div><button class="btn" id="resetBtn" type="button">Сбросить</button></div></div></section>
       </div>
       <aside class="panel preview" aria-label="Сформированный протокол">
-        <div class="panelhead" data-feedback-source="fractures.html · Интерфейс конструктора переломов"><h2>02 · Готовый текст</h2><span class="pill">Обновляется сразу</span></div>
+        <div class="panelhead" data-feedback-source="pages/fractures.html · Интерфейс конструктора переломов"><h2>02 · Готовый текст</h2><span class="pill">Обновляется сразу</span></div>
         <div class="panelbody">
           <div id="warnings" class="hidden alert" role="status"></div>
           <section class="report" aria-labelledby="description-title">
-            <div class="reporttitle" data-feedback-source="fractures.html · Интерфейс конструктора переломов"><h3 id="description-title">Описание</h3><button type="button" data-copy="description" aria-label="Копировать описание">Копировать</button></div>
+            <div class="reporttitle" data-feedback-source="pages/fractures.html · Интерфейс конструктора переломов"><h3 id="description-title">Описание</h3><button type="button" data-copy="description" aria-label="Копировать описание">Копировать</button></div>
             <div id="description" class="pretext"></div>
             <div class="field">
               <label for="additionalFindings">Дополнительные находки</label>
@@ -61,16 +61,16 @@
             </div>
           </section>
           <section class="report conclusion" aria-label="Заключение">
-            <div class="reporttitle" data-feedback-source="fractures.html · Интерфейс конструктора переломов"><button type="button" data-copy="conclusion">Копировать заключение</button></div>
+            <div class="reporttitle" data-feedback-source="pages/fractures.html · Интерфейс конструктора переломов"><button type="button" data-copy="conclusion">Копировать заключение</button></div>
             <div id="conclusion" class="pretext"></div>
           </section>
-          <div class="actions" data-feedback-source="fractures.html · Интерфейс конструктора переломов"><button class="btn primary" type="button" data-copy="all">Копировать всё</button><button class="btn" type="button" data-copy="description">Только описание</button><button class="btn" type="button" data-copy="conclusion">Только заключение</button></div>
-          <div class="hr"></div><div class="quiet" data-feedback-source="fractures.html · Интерфейс конструктора переломов">Служебные подписи, кнопки и предупреждения <strong>не копируются</strong>. Результат обычный текст. Медицинские формулировки требуют проверки врачом.</div>
+          <div class="actions" data-feedback-source="pages/fractures.html · Интерфейс конструктора переломов"><button class="btn primary" type="button" data-copy="all">Копировать всё</button><button class="btn" type="button" data-copy="description">Только описание</button><button class="btn" type="button" data-copy="conclusion">Только заключение</button></div>
+          <div class="hr"></div><div class="quiet" data-feedback-source="pages/fractures.html · Интерфейс конструктора переломов">Служебные подписи, кнопки и предупреждения <strong>не копируются</strong>. Результат обычный текст. Медицинские формулировки требуют проверки врачом.</div>
         </div>
       </aside>
     </div>
   </main>
-  <footer class="footer" data-feedback-source="fractures.html · Интерфейс конструктора переломов">Radhelper · справочный инструмент для врачей-рентгенологов, не клиническая рекомендация. Данные пациента не запрашиваются и никуда не отправляются. <a href="./">Вернуться к шаблонам</a>.</footer>
+  <footer class="footer" data-feedback-source="pages/fractures.html · Интерфейс конструктора переломов">Radhelper · справочный инструмент для врачей-рентгенологов, не клиническая рекомендация. Данные пациента не запрашиваются и никуда не отправляются. <a href="../">Вернуться к шаблонам</a>.</footer>
   <div id="toast" class="toast hidden" role="status"></div>
   <script>
   'use strict';
@@ -301,6 +301,6 @@
   });
   renderAll();
   </script>
-  <script src="assets/js/feedback.js"></script>
+  <script src="../assets/js/feedback.js"></script>
 </body>
 </html>

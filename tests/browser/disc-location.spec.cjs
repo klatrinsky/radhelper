@@ -7,7 +7,7 @@ const buttonZone = (panel, id) => panel.locator('button[data-disc-zone="' + id +
 const clipboard = page => page.evaluate(() => navigator.clipboard.readText());
 
 test('на схеме семь зон, стороны пациента обозначены, выбор доступен касанием и с клавиатуры', async ({ page }, info) => {
-  await page.goto('/disc-location.html');
+  await page.goto('/pages/disc-location.html');
   const lumbar = panel(page, 'L4–L5');
   const svg = lumbar.locator('svg');
   await expect(svg.locator('[data-disc-zone]')).toHaveCount(7);
@@ -40,7 +40,7 @@ test('на схеме семь зон, стороны пациента обоз�
 test('размер, миграция, копирование и сброс работают независимо на всех уровнях', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.goto('/disc-location.html');
+  await page.goto('/pages/disc-location.html');
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(20, 27, 32)');
   const level = page.getByLabel('Межпозвонковый уровень');
   const copy = page.getByRole('button', { name: 'Скопировать описание' });
@@ -92,7 +92,7 @@ test('размер, миграция, копирование и сброс ра�
 
 test('площадь канала копируется отдельно и вместе с выпячиванием', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto('/disc-location.html');
+  await page.goto('/pages/disc-location.html');
   const level = page.getByLabel('Межпозвонковый уровень');
   const lumbar = panel(page, 'L4–L5');
   const areaLabel = 'Планиметрическая площадь позвоночного канала, мм²';
@@ -135,7 +135,7 @@ for (const [region, initial, other] of [
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await page.route('https://mc.yandex.ru/**', route => route.abort());
     await page.goto('/?protocol=ct-spine-' + region);
-    await expect(page.locator('#study')).toHaveAttribute('data-src', 'templates/ct-spine-' + region + '.md');
+    await expect(page.locator('#study')).toHaveAttribute('data-src', 'content/templates/ct-spine-' + region + '.md');
     const scheme = page.getByText('Схема дисков', { exact: true });
     const editor = page.locator('.disc-scheme');
     const copy = page.getByRole('button', { name: 'Скопировать протокол', exact: true });

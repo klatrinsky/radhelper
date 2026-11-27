@@ -62,7 +62,7 @@
         .filter(Boolean).join(" · ");
     }
     const sec = el.closest("details.sec");
-    return sec && sec.id ? "ru/" + sec.id + ".md" : null;
+    return sec && sec.id ? "content/guides/" + sec.id + ".md" : null;
   }
 
   function hide() { btn.hidden = true; source = null; fragment = ""; }

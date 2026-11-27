@@ -9,7 +9,7 @@ const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..');
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const template = fs.readFileSync(path.join(root, 'templates', 'dxa.md'), 'utf8');
+const template = fs.readFileSync(path.join(root, 'content', 'templates', 'dxa.md'), 'utf8');
 
 // Выполняем реальные функции DXA из index.html, а не их копии в тесте.
 // Отрезаем только участок с DXA-калькуляторами, не требующий браузерного DOM.

@@ -27,24 +27,24 @@ test("сайт открывается без ошибок — у врача и �
 });
 
 test("все файлы из order.txt существуют", () => {
-  for (const dir of ["ru", "templates", "tools"])
+  for (const dir of ["content/guides", "content/templates", "content/findings"])
     for (const f of order(dir)) assert.ok(fs.existsSync(path.join(ROOT, dir, f)), dir + "/order.txt → нет файла " + f);
 });
 
 test("«Подсказки:» в шаблонах и находках ссылаются на существующие разделы", () => {
-  for (const dir of ["templates", "tools"])
+  for (const dir of ["content/templates", "content/findings"])
     for (const f of order(dir)) {
       const m = head(dir + "/" + f).match(/^Подсказки:(.*)$/mi);
       if (!m) continue;
       for (const h of m[1].split(/[,\s]+/).filter(Boolean))
-        assert.ok(fs.existsSync(path.join(ROOT, "ru", h.replace(/\.md$/i, "") + ".md")), dir + "/" + f + ": нет подсказки ru/" + h + ".md");
+        assert.ok(fs.existsSync(path.join(ROOT, "content/guides", h.replace(/\.md$/i, "") + ".md")), dir + "/" + f + ": нет подсказки content/guides/" + h + ".md");
     }
 });
 
 test("каждый «Виджет:» есть в assets/js/widgets.js", () => {
-  for (const f of list("ru").filter(f => f.endsWith(".md")))
-    for (const m of read("ru/" + f).matchAll(/^Виджет:\s*(.+)$/gmi))
-      assert.ok(W.RH_WIDGETS[m[1].trim()], "ru/" + f + ": нет виджета «" + m[1].trim() + "»");
+  for (const f of list("content/guides").filter(f => f.endsWith(".md")))
+    for (const m of read("content/guides/" + f).matchAll(/^Виджет:\s*(.+)$/gmi))
+      assert.ok(W.RH_WIDGETS[m[1].trim()], "content/guides/" + f + ": нет виджета «" + m[1].trim() + "»");
 });
 
 /* ---------- Шаблоны ↔ калькуляторы ---------- */
@@ -81,8 +81,8 @@ function toggleOptions(text, name) {
 
 test("шаблоны: каждый {{КАЛЬКУЛЯТОР}} существует, его поля есть в шаблоне, переключатель — тоже и с нужным числом вариантов", () => {
   const C = W.RH_CALC;
-  for (const f of order("templates")) {
-    const text = body("templates/" + f);
+  for (const f of order("content/templates")) {
+    const text = body("content/templates/" + f);
     const fields = new Set([...text.matchAll(/\[([^\[\]\n]*)\]/g)].map(m => m[1].trim()));
     for (const [, raw] of text.matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g)) {
       if (/^(ПЕРЕЧЕНЬ|ВСЕ)\s*:/.test(raw) || /^ЛЁГКИЕ БЕЗ НАХОДОК:\s+\S/.test(raw) ||
@@ -103,8 +103,8 @@ test("шаблоны: каждый {{КАЛЬКУЛЯТОР}} существуе
 
 test("шаблоны: невидимые калькуляторы ставят переключатели, которые есть в шаблоне", () => {
   const C = W.RH_CALC;
-  for (const f of order("templates")) {
-    const text = body("templates/" + f);
+  for (const f of order("content/templates")) {
+    const text = body("content/templates/" + f);
     const fields = new Set([...text.matchAll(/\[([^\[\]\n]*)\]/g)].map(m => m[1].trim()));
     for (const [name, def] of Object.entries(C)) {
       if (!def.set || !def.inputs.every(n => fields.has(n))) continue;   // сайт включает его, только если все поля на месте
@@ -119,9 +119,9 @@ test("шаблоны: невидимые калькуляторы ставят �
 /* ---------- Находки: условия ссылаются на существующие параметры и варианты ---------- */
 test("находки: файлы разбираются без ошибок, в условиях нет опечаток", () => {
   const F = W.RH_FINDINGS;
-  for (const f of order("tools")) {
-    const tool = F.parse(body("tools/" + f));
-    assert.deepEqual([...tool.errors], [], "tools/" + f + ": не разобраны строки");
+  for (const f of order("content/findings")) {
+    const tool = F.parse(body("content/findings/" + f));
+    assert.deepEqual([...tool.errors], [], "content/findings/" + f + ": не разобраны строки");
     const params = Object.fromEntries(tool.params.map(p => [p.id, p]));
     const calcs = new Set(tool.calcs.map(c => c.id));
     const conds = [
@@ -137,7 +137,7 @@ test("находки: файлы разбираются без ошибок, в 
           if (lower(s) === "иначе") continue;
           const m = s.match(/^([\wа-яё]+)\s*(<=|>=|!=|=|<|>)\s*(.+)$/i);
           const id = m ? m[1] : s;
-          const where = "tools/" + f + ": «" + s + "»";
+          const where = "content/findings/" + f + ": «" + s + "»";
           assert.ok(params[id] || calcs.has(id), where + " — нет параметра или расчёта " + id);
           if (!m || !params[id]) continue;
           const p = params[id], want = m[3].trim();
@@ -150,7 +150,7 @@ test("находки: файлы разбираются без ошибок, в 
     // формулы расчётов: только параметры, расчёты и арифметика
     for (const c of tool.calcs) {
       const names = c.expr.replace(/\[[^\]]+\]/g, " ").match(/[a-zа-яё_][\wа-яё]*/gi) || [];
-      for (const n of names) assert.ok(params[n] || calcs.has(n), "tools/" + f + ": в формуле " + c.id + " неизвестное имя " + n);
+      for (const n of names) assert.ok(params[n] || calcs.has(n), "content/findings/" + f + ": в формуле " + c.id + " неизвестное имя " + n);
     }
   }
 });

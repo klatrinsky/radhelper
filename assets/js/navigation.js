@@ -11,7 +11,7 @@
     if (window.RH_LAB) {
       document.title = "Помощник лаборанта";
       document.getElementById("q").removeAttribute("autofocus");
-      document.querySelector("#homeBtn img").src = "img/doctor-cat.jpg";
+      document.querySelector("#homeBtn img").src = "assets/img/doctor-cat.jpg";
       document.querySelector("footer p").textContent = "Справочный материал для рентгенолаборантов, не клиническая рекомендация. Решения о введении контраста принимает врач.";
       const side = document.getElementById("sideLink");
       side.href = "./"; side.textContent = "Помощник рентгенолога →";

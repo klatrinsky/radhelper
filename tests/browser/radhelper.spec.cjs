@@ -36,7 +36,7 @@ test('каталог свёрнут, группы открываются нез�
   const search = page.getByRole('searchbox');
   await search.fill('денситометрия');
   await expect(catalog).toBeHidden();
-  await expect(page.locator('#study')).toHaveAttribute('data-src', 'templates/dxa.md');
+  await expect(page.locator('#study')).toHaveAttribute('data-src', 'content/templates/dxa.md');
   await search.clear();
   await brain.click();
   await expect(page).toHaveURL(/\?protocol=ct-brain$/);
@@ -71,7 +71,23 @@ test('каталог ведёт прямо к справочным раздел�
   await catalog.getByText('Все инструменты', { exact: true }).click();
   await catalog.getByText('Интерактивные конструкторы', { exact: true }).click();
   await catalog.getByRole('link', { name: 'Конструктор переломов', exact: true }).click();
-  await expect(page).toHaveURL(/\/fractures\.html$/);
+  await expect(page).toHaveURL(/\/pages\/fractures\.html$/);
+});
+
+test('отдельные страницы открываются напрямую и с них можно вернуться на главную', async ({ page }) => {
+  const pages = {
+    'disc-location': 'Локализация выпячивания диска',
+    fractures: 'Конструктор переломов',
+    'leg-arteries': 'Артерии нижних конечностей',
+    'lung-segments': 'Рентгенография ОГК',
+    terms: 'Условия использования RadHelper',
+  };
+  for (const [slug, title] of Object.entries(pages)) {
+    await page.goto('/pages/' + slug + '.html');
+    await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible();
+    await page.locator('a[href="../"]').first().click();
+    await expect(page).toHaveURL('/');
+  }
 });
 
 test('поиск открывает подходящий шаблон', async ({ page }) => {
@@ -80,7 +96,7 @@ test('поиск открывает подходящий шаблон', async ({
   await search.fill('денситометрия');
 
   await expect(page.getByRole('heading', { name: 'Рентгеновская денситометрия (DXA)' })).toBeVisible();
-  await expect(page.locator('#study')).toHaveAttribute('data-src', 'templates/dxa.md');
+  await expect(page.locator('#study')).toHaveAttribute('data-src', 'content/templates/dxa.md');
   await expect(page.getByLabel(findingsLabel)).toBeEditable();
 });
 
@@ -97,7 +113,7 @@ test('подсказка «Поправить» видна под открыты
 
   const search = page.getByRole('searchbox');
   await search.fill('коронарный кальций');
-  await expect(page.locator('#study')).toHaveAttribute('data-src', 'templates/ct-coronary-calcium.md');
+  await expect(page.locator('#study')).toHaveAttribute('data-src', 'content/templates/ct-coronary-calcium.md');
   await expect(studyHelp).toBeVisible();
   await expect(help).toHaveText([message]);
   const helpBox = await studyHelp.boundingBox();
@@ -170,7 +186,7 @@ test('атлас GCA и схема Эванса загружаются при о
   const imageRequests = [];
   page.on('request', request => {
     const path = new URL(request.url()).pathname;
-    if (/^\/img\/(gca-ct\.webp|evans-index\.svg)$/.test(path)) imageRequests.push(path);
+    if (/^\/assets\/img\/(gca-ct\.webp|evans-index\.svg)$/.test(path)) imageRequests.push(path);
   });
   await page.goto(brainProtocol);
   const atlas = page.locator('.gca-figure img');
@@ -193,14 +209,14 @@ test('атлас GCA и схема Эванса загружаются при о
 
   await page.getByRole('button', { name: 'Как измерить индекс Эванса?' }).click();
   await expect.poll(() => evans.evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
-  expect(imageRequests).toEqual(['/img/gca-ct.webp', '/img/evans-index.svg']);
+  expect(imageRequests).toEqual(['/assets/img/gca-ct.webp', '/assets/img/evans-index.svg']);
 });
 
 test('памятка лаборанта загружает только свои иллюстрации при открытии', async ({ page }) => {
   const imageRequests = [];
   page.on('request', request => {
     const path = new URL(request.url()).pathname;
-    if (/^\/img\/(retrieve-|topo-|roi-)/.test(path)) imageRequests.push(path);
+    if (/^\/assets\/img\/(retrieve-|topo-|roi-)/.test(path)) imageRequests.push(path);
   });
   await page.goto('/?lab');
   await expect(page.locator('#catalog')).toBeHidden();
@@ -213,16 +229,16 @@ test('памятка лаборанта загружает только свои
   await page.getByRole('button', { name: 'Как подтянуть старое исследование' }).click();
   await expect.poll(() => retrieve.evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
   await expect(roi).toHaveJSProperty('src', '');
-  expect(imageRequests).toContain('/img/retrieve-1.jpg');
-  expect(imageRequests.every(path => path.startsWith('/img/retrieve-'))).toBe(true);
+  expect(imageRequests).toContain('/assets/img/retrieve-1.jpg');
+  expect(imageRequests.every(path => path.startsWith('/assets/img/retrieve-'))).toBe(true);
 });
 
 test('вложенная подсказка ждёт открытия всех родительских разделов', async ({ page }) => {
-  await page.route('**/ru/knee-jsw.md', route => route.fulfill({
+  await page.route('**/content/guides/knee-jsw.md', route => route.fulfill({
     contentType: 'text/plain; charset=utf-8', body: '# Суставная щель\n\n![Схема суставной щели](img/evans-index.svg)',
   }));
-  await page.route('**/ru/kellgren.md', route => route.fulfill({
-    contentType: 'text/plain; charset=utf-8', body: '# Степени артроза\n\n![Рентгенограмма колена](img/kellgren-knee/kl-1.jpg)',
+  await page.route('**/content/guides/kellgren.md', route => route.fulfill({
+    contentType: 'text/plain; charset=utf-8', body: '# Степени артроза\n\n![Рентгенограмма колена](assets/img/kellgren-knee/kl-1.jpg)',
   }));
   await page.goto('/?protocol=xr-knee');
   const hints = page.locator('.study-hints');
@@ -231,10 +247,10 @@ test('вложенная подсказка ждёт открытия всех �
   await expect(first).toHaveJSProperty('src', '');
   await expect(second).toHaveJSProperty('src', '');
   await hints.locator(':scope > summary').click();
-  await expect(first).toHaveAttribute('src', 'img/evans-index.svg');
+  await expect(first).toHaveAttribute('src', 'assets/img/evans-index.svg');
   await expect(second).toHaveJSProperty('src', '');
   await hints.getByText('Степени артроза', { exact: true }).click();
-  await expect(second).toHaveAttribute('src', 'img/kellgren-knee/kl-1.jpg');
+  await expect(second).toHaveAttribute('src', 'assets/img/kellgren-knee/kl-1.jpg');
 });
 
 test('протокол и заключение копируются отдельно в буфер обмена', async ({ page, context }) => {

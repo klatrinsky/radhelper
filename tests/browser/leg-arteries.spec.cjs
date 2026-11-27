@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 
 test('SVG открывает независимые правый и левый сосуды мышью, касанием и с клавиатуры', async ({ page }, testInfo) => {
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.goto('/leg-arteries.html');
+  await page.goto('/pages/leg-arteries.html');
   const segments = page.locator('#artery-diagram [data-vessel]');
   const right = segments.filter({ has: page.locator('title', { hasText: /Подколенная артерия · справа/ }) });
   const left = page.locator('[data-vessel="left-popliteal"]');
@@ -86,7 +86,7 @@ test('SVG открывает независимые правый и левый �
 
 test('описание и заключение копируются отдельно, норма и сброс обновляют только нужные сосуды', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto('/leg-arteries.html');
+  await page.goto('/pages/leg-arteries.html');
   const aorta = page.locator('[data-vessel="aorta"]');
   const rightTibial = page.locator('[data-vessel="right-posterior-tibial"]');
   const editor = page.getByRole('dialog');
