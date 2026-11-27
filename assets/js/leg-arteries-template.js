@@ -6,16 +6,16 @@
   const calfOrigins = ["верхней трети голени", "средней трети голени", "нижней трети голени"];
   const plaque = ["calcified", "soft", "mixed"];
   const yesNo = ["no", "yes"];
-  const labels = { ...statuses, normal: "Норма по шаблону", "multiple-stenosis": "Множественные стенозы" };
+  const labels = { ...statuses, normal: "Норма подтверждена", "template-normal": "Норма по шаблону, не подтверждена",
+    limited: "Прослеживается фрагментарно", unassessed: "Не контрастируется", "multiple-stenosis": "Множественные стенозы" };
   const modeLists = {
     aorta: ["normal", "aneurysm", "stenosis", "occlusion"],
     commonIliac: ["normal", "stenosis", "aneurysm", "occlusion"],
     proximal: ["normal", "stenosis", "occlusion"],
     superficial: ["normal", "stenosis", "multiple-stenosis", "occlusion"],
     popliteal: ["normal", "stenosis", "occlusion", "aneurysm"],
-    calf: [null, null, "occlusion"]
+    calf: ["normal", "limited", "occlusion", "unassessed"]
   };
-  const calfLabels = ["Прослеживается до стопы", "Прослеживается фрагментарно", "", "Не контрастируется", "Гипоплазирована"];
   const segments = {
     "common-iliac": ["ОПА", "commonIliac"],
     "internal-iliac": ["ВПА", "proximal"],
@@ -64,20 +64,25 @@
   }
 
   window.bindLegArteriesTemplate = function (form) {
-    const options = id => (modeLists[rows.get(id)?.kind] || []).filter(Boolean);
+    const options = id => modeLists[rows.get(id)?.kind] || [];
+    const isTemplateNormal = id => get(id)?.mode === "template-normal";
+    const canReset = id => {
+      const mode = get(id)?.mode;
+      return !!mode && mode !== "template-normal" && mode !== "template-only";
+    };
     function get(id) {
       const row = rows.get(id);
       if (!row) return undefined;
       const { name, kind } = row;
       const { i, edited } = form.group(name);
-      if (!i && !edited) return undefined;
+      if (!i && !edited) return { assessment: "template-normal", mode: "template-normal", lesions: [] };
       const mode = modeLists[kind][i];
       const aneurysmSite = kind === "aorta" && mode === "aneurysm" ? form.group("локализация ААА").i : 0;
       if (!mode || aneurysmSite) {
         return { assessment: "unassessed", mode: "template-only", lesions: [],
-          label: aneurysmSite ? ["", "Юкстаренальная аневризма", "Параренальная аневризма"][aneurysmSite] : calfLabels[i] };
+          label: aneurysmSite ? ["", "Юкстаренальная аневризма", "Параренальная аневризма"][aneurysmSite] : "Гипоплазирована" };
       }
-      if (mode === "normal") return { assessment: mode, mode, lesions: [] };
+      if (["normal", "limited", "unassessed"].includes(mode)) return { assessment: mode, mode, lesions: [] };
       const lesion = { type: mode === "multiple-stenosis" ? "stenosis" : mode };
       for (const [key, binding] of Object.entries(bindings(name, kind, mode))) {
         if (binding.group) {
@@ -104,8 +109,8 @@
       form.setGroup(row.name, modeLists[row.kind].indexOf(mode));
     }
     function reset(id) {
+      if (!canReset(id)) return;
       const row = rows.get(id);
-      if (!row || get(id)?.mode === "template-only") return;
       for (const mode of options(id)) {
         for (const binding of Object.values(bindings(row.name, row.kind, mode))) {
           if (binding.group) form.setGroup(binding.group, 0, false);
@@ -119,9 +124,9 @@
       options,
       label: mode => labels[mode],
       get,
-      canReset: id => !!get(id) && get(id).mode !== "template-only",
-      count: () => [...rows.keys()].filter(id => get(id)).length,
-      canConfirm: () => [...rows.keys()].some(id => !get(id) && options(id).includes("normal")),
+      canReset,
+      count: () => [...rows.keys()].filter(id => !isTemplateNormal(id)).length,
+      canConfirm: () => [...rows.keys()].some(isTemplateNormal),
       setStatus,
       setDetail(id, key, value) {
         const row = rows.get(id);
@@ -148,7 +153,7 @@
       reset,
       clear() { for (const id of rows.keys()) reset(id); },
       confirmUnmarked() {
-        for (const id of rows.keys()) if (!get(id) && options(id).includes("normal")) setStatus(id, "normal");
+        for (const id of rows.keys()) if (isTemplateNormal(id)) setStatus(id, "normal");
       }
     };
   };

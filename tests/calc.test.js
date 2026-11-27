@@ -441,6 +441,8 @@ test("КТА ног: все состояния схемы используют �
     assert.ok(assessment);
     assert.equal(assessment.count(), 0);
     for (const { id } of W.RH_LEG_ARTERIES.vessels) {
+      const initial = assessment.get(id);
+      assert.equal(initial?.mode, id.endsWith("-tibioperoneal") ? undefined : "template-normal", id);
       for (const mode of assessment.options(id)) {
         assessment.setStatus(id, mode);
         assert.equal(assessment.get(id).mode, mode, id);
@@ -454,10 +456,10 @@ test("КТА ног: все состояния схемы используют �
         }
       }
       assessment.reset(id);
-      assert.equal(assessment.get(id), undefined, id);
+      assert.deepEqual(assessment.get(id), initial, id);
     }
     assessment.confirmUnmarked();
-    assert.equal(assessment.count(), 15);
+    assert.equal(assessment.count(), 21);
     assert.equal(assessment.canConfirm(), false);
     assert.equal(tpl.text(), preview);
     assessment.clear();

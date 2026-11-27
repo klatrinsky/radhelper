@@ -15,21 +15,22 @@
         <aside class="card controls" aria-labelledby="legend-title">
           <h2 id="legend-title">Условные обозначения</h2>
           <ul class="legend">
-            <li><span class="swatch" data-visual="normal"></span>${state.integrated ? "Норма по шаблону" : "Без патологии"}</li>
+            ${state.integrated ? '<li><span class="swatch" data-visual="template-normal"></span>Норма по шаблону, не подтверждена</li>' : ""}
+            <li><span class="swatch" data-visual="normal"></span>${state.integrated ? state.label("normal") : "Без патологии"}</li>
             <li><span class="swatch" data-visual="stenosis-low"></span>Стеноз менее 50%</li>
             <li><span class="swatch" data-visual="stenosis-middle"></span>${state.integrated ? "Стеноз от 50%, менее 70%" : "Стеноз 50–69%"}</li>
             <li><span class="swatch" data-visual="stenosis-high"></span>${state.integrated ? "Стеноз от 70%, менее 100%" : "Стеноз 70–99%"}</li>
             <li><span class="swatch" data-visual="stenosis-pending"></span>Стеноз, процент не указан</li>
             <li><span class="swatch" data-visual="occlusion"></span>Окклюзия</li>
             <li><span class="swatch" data-visual="aneurysm"></span>Аневризматическое расширение</li>
-            <li><span class="swatch" data-visual="unassessed"></span>${state.integrated ? "Нет отметки или состояние задано только в шаблоне" : "Не отмечен или не оценивался"}</li>
-            ${state.integrated ? "" : '<li><span class="swatch" data-visual="limited"></span>Оценка ограничена</li>'}
+            <li><span class="swatch" data-visual="unassessed"></span>${state.integrated ? "Нет оценки на схеме" : "Не отмечен или не оценивался"}</li>
+            <li><span class="swatch" data-visual="limited"></span>Оценка ограничена</li>
           </ul>
           <p class="muted">Цветовые диапазоны стеноза служат для визуальной индикации.</p>
-          ${state.integrated ? '<p class="muted artery-template-note">Схема меняет совпадающие поля шаблона. Норму можно подтвердить там, где у шаблона есть соответствующий вариант.</p>' : ""}
+          ${state.integrated ? '<p class="muted artery-template-note">Норма по шаблону уже входит в копируемый текст. Кнопка подтверждает её для всех бледно-красных сосудов.</p>' : ""}
           <div class="diagram-actions">
             <p id="progress" role="status"></p>
-            <button type="button" id="confirm-unmarked">Подтвердить норму для неотмеченных</button>
+            <button type="button" id="confirm-unmarked">${state.integrated ? "Подтвердить норму по шаблону" : "Подтвердить норму для неотмеченных"}</button>
             <button type="button" id="reset-diagram" disabled>Сбросить схему</button>
           </div>
         </aside>
@@ -225,7 +226,10 @@
     function showFields() {
       const entry = state.get(editing);
       const options = state.options?.(editing) || Object.keys(statuses);
-      statusSelect.replaceChildren(new Option("Выберите состояние", "", true, true));
+      const pending = entry?.mode === "template-normal";
+      statusSelect.replaceChildren(pending
+        ? new Option(state.label(entry.mode), entry.mode, true, true)
+        : new Option("Выберите состояние", "", true, true));
       statusSelect.options[0].disabled = true;
       for (const mode of options) statusSelect.add(new Option(state.label?.(mode) || statuses[mode], mode));
       if (entry?.label) {

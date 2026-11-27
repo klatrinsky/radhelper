@@ -9,6 +9,7 @@
   --on-accent: #fff;
   --error: #b42318;
   --normal: #c73245;
+  --template-normal: #cc7f89;
   --unassessed: #747c86;
   --yellow: #c49b00;
   --orange: #cd660d;
@@ -30,6 +31,7 @@
     --on-accent: #141d27;
     --error: #ff958b;
     --normal: #ff6377;
+    --template-normal: #a66169;
     --unassessed: #9ea6b0;
     --yellow: #f0cc49;
     --orange: #ffa152;
@@ -60,6 +62,7 @@
 .side-label { fill: var(--muted, var(--diagram-muted)); text-anchor: middle; font-size: 13px; font-weight: 650; }
 
 [data-visual="normal"] { --vessel: var(--normal); }
+[data-visual="template-normal"] { --vessel: var(--template-normal); }
 [data-visual="stenosis-low"] { --vessel: var(--yellow); }
 [data-visual="stenosis-middle"] { --vessel: var(--orange); }
 [data-visual="stenosis-high"] { --vessel: var(--burgundy); }

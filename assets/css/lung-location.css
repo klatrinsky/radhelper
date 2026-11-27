@@ -1,0 +1,153 @@
+.lung-demo, .lung-findings, .lung-picker {
+  color-scheme: light dark;
+  --lung-bg: light-dark(#f3f6f6, #121c20);
+  --lung-card: light-dark(#fff, #1b272c);
+  --lung-ink: light-dark(#15272c, #eaf4f4);
+  --lung-muted: light-dark(#4a6066, #b2c6ca);
+  --lung-border: light-dark(#b4c4c8, #51676e);
+  --lung-accent: light-dark(#00695f, #75d9c7);
+  --lung-on-accent: light-dark(#fff, #112623);
+  --lung-tint: light-dark(#e0f4ef, #263e3c);
+}
+:root[data-theme="light"] :is(.lung-demo, .lung-findings, .lung-picker) { color-scheme: light; }
+:root[data-theme="dark"] :is(.lung-demo, .lung-findings, .lung-picker) { color-scheme: dark; }
+
+:is(.lung-demo, .lung-findings, .lung-picker), :is(.lung-demo, .lung-findings, .lung-picker) * { box-sizing: border-box; }
+.lung-findings-toggle { margin-bottom: 8px; white-space: normal; }
+.lung-findings-toggle > summary {
+  display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 6px 12px;
+  border: 1px solid var(--line); border-radius: 9px; color: var(--accent); background: var(--card);
+  font: 600 .88rem/1.3 system-ui, sans-serif; cursor: pointer; list-style: none;
+}
+.lung-findings-toggle > summary::-webkit-details-marker { display: none; }
+.lung-findings-toggle > summary::after { content: "⌄"; }
+.lung-findings-toggle[open] > summary::after { content: "⌃"; }
+.lung-findings-toggle .lung-findings {
+  margin-top: 8px; color: var(--lung-ink); font: .95rem/1.45 system-ui, sans-serif;
+}
+.lung-demo {
+  margin: 0;
+  background: var(--lung-bg);
+  color: var(--lung-ink);
+  font: 16px/1.5 system-ui, sans-serif;
+}
+.lung-demo-shell { width: min(100%, 960px); margin-inline: auto; padding-inline: clamp(12px, 4vw, 32px); }
+.lung-demo-bar { padding-block: 13px; background: var(--lung-card); border-bottom: 1px solid var(--lung-border); }
+.lung-demo-bar .lung-demo-shell { display: flex; }
+.lung-demo main { padding-block: clamp(20px, 5vw, 42px) 36px; }
+.lung-demo h1 { margin: 0; font-size: clamp(1.65rem, 4vw, 2.45rem); letter-spacing: -.025em; line-height: 1.15; }
+.lung-demo h2, .lung-findings h2 { margin: 0; font-size: 1.12rem; line-height: 1.25; }
+.lung-demo-intro { max-width: 65ch; margin: 10px 0 20px; color: var(--lung-muted); }
+.lung-demo .lung-findings-grid { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 14px; align-items: start; }
+.lung-demo-card { min-width: 0; padding: clamp(12px, 3vw, 20px); border: 1px solid var(--lung-border); border-radius: 14px; background: var(--lung-card); }
+.lung-demo-report { border-inline-start: 4px solid var(--lung-accent); }
+.lung-demo-report div { margin-block: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lung-demo-report p { margin: 8px 0 0; color: var(--lung-muted); font-size: .85rem; }
+.lung-demo-report p:empty { display: none; }
+.lung-demo-note { margin-top: 18px; color: var(--lung-muted); font-size: .87rem; }
+.lung-demo-note p { margin: 6px 0; }
+.lung-demo-note a { color: var(--lung-accent); }
+
+:is(.lung-demo, .lung-findings, .lung-picker) button {
+  min-height: 44px;
+  padding: 7px 11px;
+  border: 1px solid var(--lung-border);
+  border-radius: 8px;
+  background: var(--lung-card);
+  color: var(--lung-ink);
+  font: 620 .875rem/1.2 system-ui, sans-serif;
+  cursor: pointer;
+}
+:is(.lung-demo, .lung-findings, .lung-picker) button:disabled { opacity: .55; cursor: default; }
+:is(.lung-demo, .lung-findings, .lung-picker) button:hover:not(:disabled) { border-color: var(--lung-accent); }
+:is(.lung-demo, .lung-findings, .lung-picker) button[aria-pressed="true"] {
+  border-color: var(--lung-accent);
+  background: var(--lung-tint);
+  color: var(--lung-accent);
+  box-shadow: inset 0 0 0 1px var(--lung-accent);
+}
+:is(.lung-demo, .lung-findings, .lung-picker) .lung-primary {
+  background: var(--lung-accent);
+  border-color: var(--lung-accent);
+  color: var(--lung-on-accent);
+}
+:is(.lung-demo, .lung-findings, .lung-picker) :is(button, a, input, select, summary):focus-visible { outline: 2px solid var(--lung-accent); outline-offset: 2px; }
+.lung-button-group { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.lung-picker-tools { display: flex; flex-wrap: wrap; gap: 9px; justify-content: space-between; margin-bottom: 10px; }
+.lung-picker-tools [data-views] { display: none; }
+.lung-picker-panels { display: grid; grid-template-columns: minmax(0, 29fr) minmax(0, 50fr) minmax(0, 29fr); gap: 7px; }
+.lung-picker-panels[data-fields-mode] { display: block; max-width: 520px; margin-inline: auto; }
+.lung-picker figure { margin: 0; min-width: 0; }
+.lung-picker figcaption { padding-bottom: 4px; text-align: center; font-size: .87rem; font-weight: 650; }
+.lung-picker svg {
+  display: block;
+  width: 100%;
+  background: radial-gradient(ellipse at center, #34424a 0%, #172127 74%);
+  border: 1px solid #485b64;
+  border-radius: 8px;
+}
+.lung-picker svg text { pointer-events: none; text-anchor: middle; }
+.lung-picker .lung-area { --lung-area-fill: #da699d; cursor: pointer; touch-action: manipulation; outline: none; }
+.lung-picker [data-lobe="middle"] .lung-area, .lung-picker [data-lobe="middle"].lung-area,
+.lung-picker .lung-area[data-region$="-middle"] { --lung-area-fill: #77b0ed; }
+.lung-picker [data-lobe="lower"] .lung-area, .lung-picker [data-lobe="lower"].lung-area,
+.lung-picker .lung-area[data-region$="-lower"] { --lung-area-fill: #e3cd78; }
+.lung-picker .lung-area :is(path, rect) { fill: var(--lung-area-fill); fill-opacity: .13; stroke: var(--lung-area-fill); stroke-width: 1.55; }
+.lung-picker .lung-whole-lobe path { stroke-width: 0; }
+.lung-picker .lung-area text, .lung-side-title { fill: #f5f9fc; font-size: 16px; font-weight: 700; dominant-baseline: central; }
+.lung-side-title { font-size: 17px; }
+.lung-picker .lung-area[data-recorded] > :is(path, rect), .lung-picker path[data-partial-recorded] { fill: #d6a349; fill-opacity: .46; }
+.lung-picker .lung-area[aria-pressed="true"] > :is(path, rect), .lung-picker path[data-partial-selection] {
+  fill: #57d8be; fill-opacity: .63; stroke: #a9fbea; stroke-width: 2;
+}
+.lung-picker .lung-area[aria-pressed="true"] text { fill: #fff; paint-order: stroke; stroke: #124740; stroke-width: 2; }
+.lung-picker .lung-area:focus-visible > :is(path, rect) { stroke: #fff; stroke-width: 3; }
+@media (hover: hover) {
+  .lung-picker .lung-area:hover > :is(path, rect) { stroke: #fff; stroke-width: 3; }
+}
+.lung-picker :is(.lung-outline, .lung-fissures, .lung-chest) { fill: none; pointer-events: none; }
+.lung-picker .lung-outline { stroke: #afbac0; stroke-width: 1.1; }
+.lung-picker .lung-fissures { stroke: #c4cbd0; stroke-width: 1.4; }
+.lung-picker .lung-base { fill: #10181d; fill-opacity: .45; pointer-events: none; }
+.lung-picker .lung-chest { stroke: #78919c; stroke-width: 3.4; opacity: .47; }
+.lung-picker summary { padding: 10px 0 3px; cursor: pointer; font-size: .87rem; font-weight: 650; }
+.lung-picker fieldset { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; margin: 5px 0; padding: 0; border: 0; }
+.lung-picker legend { padding: 0; font-size: .82rem; font-weight: 650; }
+.lung-picker button[data-recorded]:not([aria-pressed="true"]) { border-color: #a08045; }
+.lung-projection-note, [data-lung-empty] { margin: 6px 0 0; font-size: .87rem; color: var(--lung-muted); }
+
+.lung-findings-grid { margin-top: 14px; }
+[data-lung-findings] { list-style: none; margin: 8px 0 0; padding: 0; }
+[data-lung-findings] li { padding: 8px 0; border-top: 1px solid var(--lung-border); }
+[data-lung-findings] p, .lung-selection { margin: 2px 0 8px; overflow-wrap: anywhere; }
+.lung-selection { margin-top: 10px; color: var(--lung-accent); font-weight: 650; }
+.lung-control { display: grid; gap: 3px; margin-bottom: 8px; font-size: .88rem; font-weight: 620; }
+.lung-control :is(input, select) {
+  width: 100%; min-height: 44px; border: 1px solid var(--lung-border); border-radius: 8px;
+  padding: 8px; background: var(--lung-card); color: var(--lung-ink); font: inherit;
+}
+.lung-descriptors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr));
+  gap: 0 8px;
+  min-width: 0;
+  margin: 8px 0;
+  padding: 6px 0 0;
+  border: 0;
+  border-top: 1px solid var(--lung-border);
+}
+.lung-descriptors legend { padding: 0 6px 0 0; font-size: .88rem; font-weight: 650; }
+.lung-descriptors .lung-control:has(input[type="text"]) { grid-column: 1 / -1; }
+.lung-control :is(input, select) { min-width: 0; }
+:is(.lung-demo, .lung-findings) [hidden] { display: none !important; }
+
+@media (max-width: 680px) {
+  .lung-demo .lung-findings-grid { grid-template-columns: minmax(0, 1fr); }
+  .lung-picker-tools .lung-button-group { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .lung-picker-panels { display: block; }
+  .lung-picker-panels:not([data-fields-mode]) figure:not([data-current-view]) { display: none; }
+  .lung-picker-panels figure { max-width: 370px; margin-inline: auto; }
+  .lung-picker-panels figure[data-projection$="Lateral"] { max-width: 272px; }
+  .lung-picker-tools button { padding-inline: 4px; font-size: .79rem; }
+}

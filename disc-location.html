@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Локализация выпячивания диска — RadHelper</title>
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/brand.css">
+  <link rel="stylesheet" href="assets/css/disc-location.css">
+  <script src="assets/js/disc-location-model.js" defer></script>
+  <script src="assets/js/disc-location-picker.js" defer></script>
+  <script src="assets/js/disc-location-demo.js" defer></script>
+</head>
+<body class="disc-demo">
+  <header class="disc-header">
+    <div class="disc-shell">
+      <a class="rh-logo" href="./" aria-label="RadHelper — на главную">
+        <img src="img/brand-slice.png" alt=""><span class="rh-rad"></span><span class="rh-helper"></span>
+      </a>
+    </div>
+  </header>
+  <main class="disc-shell">
+    <h1>Локализация выпячивания диска</h1>
+    <p class="disc-intro">Выберите одну или несколько зон на аксиальной схеме. «Справа» и «слева» — стороны пациента.</p>
+    <label class="disc-level">Межпозвонковый уровень
+      <select id="disc-level">
+        <option value="C5–C6">C5–C6 · шейный</option>
+        <option value="Th7–Th8">Th7–Th8 · грудной</option>
+        <option value="L4–L5" selected>L4–L5 · поясничный</option>
+        <option value="L5–S1">L5–S1 · пояснично-крестцовый</option>
+      </select>
+    </label>
+    <div id="disc-levels"></div>
+    <section class="disc-report" aria-labelledby="disc-report-title">
+      <div class="disc-report-top">
+        <h2 id="disc-report-title">Фрагмент описания</h2>
+        <button type="button" id="disc-copy" disabled>Скопировать описание</button>
+      </div>
+      <p id="disc-report" aria-live="polite"></p>
+      <p id="disc-copy-status" role="status"></p>
+    </section>
+    <footer class="disc-note">
+      <p>Границы зон условные. Для всех уровней используется одна схема на основе поясничной номенклатуры. <a href="https://www.thespinejournalonline.com/article/S1529-9430%2814%2900409-4/fulltext">Fardon и соавт., рис. 11</a></p>
+    </footer>
+  </main>
+</body>
+</html>

@@ -49,7 +49,11 @@ test("каждый «Виджет:» есть в assets/js/widgets.js", () => {
 
 /* ---------- Шаблоны ↔ калькуляторы ---------- */
 // Эти команды разбирают интерактивные схемы.
-const diagramDirectives = new Set(["ВИЛЛИЗИЕВ КРУГ", "ВИЛЛИЗИЕВ ОПИСАНИЕ", "ВИЛЛИЗИЕВ ЗАКЛЮЧЕНИЕ", "СХЕМА АРТЕРИЙ"]);
+const diagramDirectives = new Set([
+  "ВИЛЛИЗИЕВ КРУГ", "ВИЛЛИЗИЕВ ОПИСАНИЕ", "ВИЛЛИЗИЕВ ЗАКЛЮЧЕНИЕ", "СХЕМА АРТЕРИЙ",
+  "СХЕМА ЛЁГКИХ", "ЛЁГКИЕ ОПИСАНИЕ", "ЛЁГКИЕ ЗАКЛЮЧЕНИЕ", "ДИСКИ ОПИСАНИЕ", "ДИСКИ ЗАКЛЮЧЕНИЕ"
+]);
+const discDirective = /^(?:СХЕМА ДИСКОВ: (?:cervical|thoracic|lumbar)|ДИСКИ ОПИСАНИЕ: (?:L1–L2|L2–L3|L3–L4|L4–L5|L5–S1))$/;
 
 // максимальный номер варианта, который калькулятор может поставить переключателю
 function maxPick(def) {
@@ -81,7 +85,8 @@ test("шаблоны: каждый {{КАЛЬКУЛЯТОР}} существуе
     const text = body("templates/" + f);
     const fields = new Set([...text.matchAll(/\[([^\[\]\n]*)\]/g)].map(m => m[1].trim()));
     for (const [, raw] of text.matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g)) {
-      if (/^(ПЕРЕЧЕНЬ|ВСЕ)\s*:/.test(raw) || diagramDirectives.has(raw)) continue;
+      if (/^(ПЕРЕЧЕНЬ|ВСЕ)\s*:/.test(raw) || /^ЛЁГКИЕ БЕЗ НАХОДОК:\s+\S/.test(raw) ||
+          diagramDirectives.has(raw) || discDirective.test(raw)) continue;
       const def = C[raw];
       assert.ok(def, f + ": нет калькулятора {{" + raw + "}}");
       if (def.raw) continue;                                   // такие считают и по неполным данным
