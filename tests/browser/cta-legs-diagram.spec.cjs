@@ -4,10 +4,6 @@ const detailed = '/?protocol=cta-legs';
 const short = '/?protocol=cta-legs-short';
 const findings = 'Дополнительные находки';
 
-test.beforeEach(async ({ page }) => {
-  await page.route('https://mc.yandex.ru/**', route => route.abort());
-});
-
 function diagram(page) {
   const toggle = page.getByText('Схема артерий', { exact: true });
   const editor = page.getByRole('dialog', { name: /артерия|аорты|ствол/i });

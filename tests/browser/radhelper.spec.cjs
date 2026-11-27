@@ -3,8 +3,32 @@ const { test, expect } = require('@playwright/test');
 const brainProtocol = '/?protocol=ct-brain-short';
 const findingsLabel = 'Дополнительные находки';
 
-test.beforeEach(async ({ page }) => {
-  await page.route('https://mc.yandex.ru/**', route => route.abort());
+test('страницы загружаются и работают без запросов к сторонним доменам', async ({ page, context, baseURL }) => {
+  const siteOrigin = new URL(baseURL).origin;
+  const externalRequests = [];
+  await context.route(url => ['http:', 'https:'].includes(url.protocol) && url.origin !== siteOrigin, route => {
+    externalRequests.push(route.request().url());
+    return route.abort();
+  });
+
+  await page.goto('/');
+  await expect(page.locator('#catalog')).toBeVisible();
+  await page.goto('/lab/');
+  await expect(page).toHaveURL('/?lab');
+  await expect(page.locator('#labLinks')).toBeVisible();
+
+  await page.goto(brainProtocol);
+  await expect(page.getByRole('tab', { name: 'Кратко', selected: true })).toBeVisible();
+  await page.getByLabel(findingsLabel).fill('Тестовая находка');
+  await page.getByRole('searchbox').fill('денситометрия');
+  await expect(page.locator('#study')).toHaveAttribute('data-src', 'content/templates/dxa.md');
+
+  for (const slug of ['disc-location', 'fractures', 'leg-arteries', 'lung-segments', 'terms']) {
+    await page.goto('/pages/' + slug + '.html');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  }
+
+  expect(externalRequests).toEqual([]);
 });
 
 test('каталог свёрнут, группы открываются независимо, а поиск скрывает каталог', async ({ page }) => {

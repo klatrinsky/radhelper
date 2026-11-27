@@ -133,7 +133,6 @@ for (const [region, initial, other] of [
 ]) {
   test(`схема дисков в протоколе ${region} копирует данные по уровням`, async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-    await page.route('https://mc.yandex.ru/**', route => route.abort());
     await page.goto('/?protocol=ct-spine-' + region);
     await expect(page.locator('#study')).toHaveAttribute('data-src', 'content/templates/ct-spine-' + region + '.md');
     const scheme = page.getByText('Схема дисков', { exact: true });

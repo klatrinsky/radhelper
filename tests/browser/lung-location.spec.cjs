@@ -179,7 +179,6 @@ test('характеристики образования и лёгочного 
 
 test('все варианты ОГК включают схему в описание и заключение и восстанавливаются после сброса', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.route('https://mc.yandex.ru/**', route => route.abort());
   const variants = ['xr-chest', 'xr-chest-full', 'xr-chest-age', 'xr-chest-supine', 'xr-chest-portable'];
   const template = page.locator('.tpl');
   const toggle = template.getByText('Схема лёгких', { exact: true });
@@ -241,7 +240,6 @@ test('все варианты ОГК включают схему в описан
 
 test('формулировка начинается с локализации, а находки и сброс привязаны к текущей вкладке', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.route('https://mc.yandex.ru/**', route => route.abort());
   await page.goto('/?protocol=xr-chest');
   const toggle = page.getByText('Схема лёгких', { exact: true });
   const normal = page.getByRole('tab', { name: 'Норма', exact: true });
@@ -271,7 +269,6 @@ test('формулировка начинается с локализации, �
 
 test('заключение различает долю, лёгочное поле и находку со свободным текстом', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.route('https://mc.yandex.ru/**', route => route.abort());
   await page.goto('/?protocol=xr-chest');
   await page.getByText('Схема лёгких', { exact: true }).click();
   const kind = form(page).getByRole('combobox', { name: 'Находка', exact: true });

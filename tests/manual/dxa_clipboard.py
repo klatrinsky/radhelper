@@ -9,7 +9,6 @@ from playwright.sync_api import expect, sync_playwright
 
 
 def check(page, url):
-    page.route("https://mc.yandex.ru/**", lambda route: route.abort())
     page.goto(url + "?feedback-check=synthetic-page-value")
     page.locator("#q").fill("денситометрия")
     form = page.locator("#study .tpl")
