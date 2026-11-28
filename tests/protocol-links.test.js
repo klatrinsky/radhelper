@@ -88,6 +88,50 @@ test("сброс очищает текущий вариант, а переход
   assert.equal(notes().value, "");
 });
 
+test("сохранённая форма снимает подсветку один раз и подтверждает копирование в течение восьми секунд", async t => {
+  const w = await openSite({ query: "?protocol=ct-brain-short" });
+  t.after(() => w.close());
+  const $ = selector => w.document.querySelector(selector);
+  const field = $('.tpl input[data-name="Рога"]');
+  const switchTab = () => $(".tab:not([aria-selected=true])").click();
+  switchTab();
+  switchTab();
+  assert.equal($('.tpl input[data-name="Рога"]'), field);
+
+  let now = w.Date.now();
+  w.Date.now = () => now;
+  const copied = [];
+  w.document.execCommand = () => {
+    copied.push($("textarea[readonly]").value);
+    return true;
+  };
+  const button = $(".copy");
+  button.click();
+  assert.deepEqual(copied, []);
+  assert.equal(button.textContent, "Всё равно скопировать");
+  assert.equal($("#toast").textContent, "Не заполнено: Рога, по шкале GCA");
+  assert.equal(w.document.activeElement, field);
+  assert.ok(field.classList.contains("miss"));
+
+  const removeHighlight = t.mock.method(field.classList, "remove");
+  field.value = "23";
+  field.dispatchEvent(new w.Event("input", { bubbles: true }));
+  assert.equal(removeHighlight.mock.calls.filter(call => call.arguments.includes("miss")).length, 1);
+  assert.equal(field.classList.contains("miss"), false);
+  assert.ok($(".tpl input.miss"));
+
+  now += 8000;
+  button.click();
+  assert.deepEqual(copied, []);
+  assert.equal(button.textContent, "Всё равно скопировать");
+  now += 7999;
+  button.click();
+  assert.equal(copied.length, 1);
+  assert.match(copied[0], /индекс Эванса/);
+  assert.equal(button.textContent, "Скопировать протокол");
+  assert.equal($("#toast").textContent, "Скопировано");
+});
+
 test("кнопки маммографии раздельно копируют протокол и заключение", async t => {
   const w = await openSite({ query: "?protocol=mmg-ds" });
   t.after(() => w.close());

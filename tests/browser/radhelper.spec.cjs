@@ -257,6 +257,38 @@ test('памятка лаборанта загружает только свои
   expect(imageRequests.every(path => path.startsWith('/assets/img/retrieve-'))).toBe(true);
 });
 
+test('на обоих входах печатается выбранная экстренная памятка', async ({ page }) => {
+  let printCalls = 0;
+  await page.exposeFunction('recordPrint', () => { printCalls++; });
+  await page.addInitScript(() => { window.print = () => window.recordPrint(); });
+  await page.emulateMedia({ media: 'print' });
+
+  for (const [url, id] of [['/#sos-anaphylaxis', 'sos-anaphylaxis'], ['/?lab', 'sos-extravasation']]) {
+    await page.goto(url);
+    if (url === '/?lab') {
+      await page.locator('#sosLinks').getByRole('button', { name: 'Экстравазация' }).click();
+    }
+    const guide = page.locator('#' + id);
+    const print = guide.getByRole('button', { name: /Распечатать на стену/ });
+    await expect(print).toBeVisible();
+    const expectedCalls = printCalls + 1;
+    await print.click();
+    await expect.poll(() => printCalls).toBe(expectedCalls);
+    await expect(page.locator('body')).toHaveClass(/\bprint-sos\b/);
+    await expect(page.locator('.print-me')).toHaveCount(1);
+    await expect(guide).toHaveClass(/\bprint-me\b/);
+    await expect(guide.locator('.body')).toBeVisible();
+    await expect(page.locator('header')).toBeHidden();
+    await expect(page.locator('details.sec.sos:not(.print-me)')).toBeHidden();
+    await expect(print).toBeHidden();
+
+    await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+    await expect(page.locator('body')).not.toHaveClass(/\bprint-sos\b/);
+    await expect(page.locator('.print-me')).toHaveCount(0);
+    await expect(print).toBeVisible();
+  }
+});
+
 test('вложенная подсказка ждёт открытия всех родительских разделов', async ({ page }) => {
   await page.route('**/content/guides/knee-jsw.md', route => route.fulfill({
     contentType: 'text/plain; charset=utf-8', body: '# Суставная щель\n\n![Схема суставной щели](img/evans-index.svg)',

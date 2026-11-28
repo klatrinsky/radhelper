@@ -8,7 +8,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..');
-const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const engine = fs.readFileSync(path.join(root, 'assets', 'js', 'template-engine.js'), 'utf8');
 const template = fs.readFileSync(path.join(root, 'content', 'templates', 'dxa.md'), 'utf8');
 
 const calculatorsPath = path.join(root, 'assets', 'js', 'calculators.js');
@@ -80,9 +80,9 @@ test('Служебный переключатель не копируется; �
 });
 
 test('При смене критерия ранее введённые T/Z проценты не смешиваются', () => {
-  assert.match(index, /const dxaPrevious = \{ T: \{\}, Z: \{\} \}/);
-  assert.match(index, /dxaPrevious\[dxaPreviousCrit\]\[r\.k\] = fields\[0\]\.value/);
-  assert.match(index, /dxaPrevious\[crit\]\[r\.k\]/);
+  assert.match(engine, /const dxaPrevious = \{ T: \{\}, Z: \{\} \}/);
+  assert.match(engine, /dxaPrevious\[dxaPreviousCrit\]\[r\.k\] = fields\[0\]\.value/);
+  assert.match(engine, /dxaPrevious\[crit\]\[r\.k\]/);
 });
 
 test('Сравнение включает нулевую разность и только видимые области с парой значений', () => {
