@@ -38,6 +38,9 @@
     let lungReport;
     const discFields = [];
     let discScheme;
+    const strokeFields = [];
+    let strokeReport;
+    let strokeMissing;
     let refreshArteries;
     const visibleWhen = new Map();
     const PH_OF = new Map();                    // «+ имя» пустого варианта → { group, inst }
@@ -408,6 +411,15 @@
           update();
           target.append(span);
           out.push(() => read() || EMPTY);
+        } else if (calc === "ОНМК ОПИСАНИЕ" || calc === "ОНМК ЗАКЛЮЧЕНИЕ" || calc === "ОНМК РЕКОМЕНДАЦИИ") {
+          const span = document.createElement("span");
+          const key = { "ОНМК ОПИСАНИЕ": "description", "ОНМК ЗАКЛЮЧЕНИЕ": "conclusion",
+            "ОНМК РЕКОМЕНДАЦИИ": "recommendations" }[calc];
+          const update = () => { span.textContent = strokeReport?.[key] || ""; };
+          strokeFields.push(update);
+          update();
+          target.append(span);
+          out.push(() => span.textContent || EMPTY);
         } else if (calc === "ДИСКИ ЗАКЛЮЧЕНИЕ" || calc === "ДИСКИ ОПИСАНИЕ" || calc?.startsWith("ДИСКИ ОПИСАНИЕ:")) {
           const span = document.createElement("span");
           const level = calc.split(":")[1]?.trim();
@@ -482,7 +494,7 @@
         reportSection.setAttribute("aria-label", "Заключение");
         el.append(reportSection);
       } else if (conclusionSection && reportSection === conclusionSection &&
-        /^(?:\{(?:#[^:]+:\s*)?(?:\|\s*)?)?Рекомендации:/i.test(line)) {
+        (/^(?:\{(?:#[^:]+:\s*)?(?:\|\s*)?)?Рекомендации:/i.test(line) || line === "{{ОНМК РЕКОМЕНДАЦИИ}}")) {
         conclusionEnd = parts.length;
         reportSection = el;
       }
@@ -511,6 +523,14 @@
         discScheme = window.createDiscLocationTemplate(details, disc[1], () => {
           discFields.forEach(update => update());
           lists.forEach(update => update());
+          tidy();
+        });
+      } else if (line.trim() === "> {{ОНМК}}") {
+        const panel = document.createElement("div");
+        reportSection.append(panel);
+        strokeMissing = window.createStrokeTemplate(panel, report => {
+          strokeReport = report;
+          strokeFields.forEach(update => update());
           tidy();
         });
       } else if (line.trim() === "> {{ВИЛЛИЗИЕВ КРУГ}}") {
@@ -639,6 +659,7 @@
         missing = []; copyParts(section).forEach(p => p());
         const invalidDisc = section === "protocol" ? discScheme?.firstInvalid() : undefined;
         if (invalidDisc) missing.unshift(invalidDisc);
+        if (strokeMissing) missing.push(...strokeMissing());
         const seen = new Set(), m = missing.filter(x => !seen.has(x.el) && seen.add(x.el));   // поле и его калькулятор — один раз
         missing = []; return m;
       },

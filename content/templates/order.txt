@@ -5,6 +5,7 @@
 # КТ
 ct-brain.md
 ct-brain-short.md
+ct-brain-stroke.md
 ct-sinus.md
 ct-temporal.md
 cta-bca.md
