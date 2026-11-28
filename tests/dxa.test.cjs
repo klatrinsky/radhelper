@@ -11,29 +11,13 @@ const root = path.resolve(__dirname, '..');
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const template = fs.readFileSync(path.join(root, 'content', 'templates', 'dxa.md'), 'utf8');
 
-// Выполняем реальные функции DXA из index.html, а не их копии в тесте.
-// Отрезаем только участок с DXA-калькуляторами, не требующий браузерного DOM.
-function loadDxa() {
-  const start = index.indexOf('  const DXA = [');
-  const end = index.indexOf('  /* Точка терапевтического вмешательства FRAX', start);
-  assert.ok(start >= 0 && end > start, 'Не найден участок DXA-калькуляторов в index.html');
-  const sandbox = {
-    CALC: {},
-    PH_MM: [],
-    fmt: (x, digits) => x.toFixed(digits).replace('.', ','),
-  };
-  vm.runInNewContext(
-    index.slice(start, end) + '\n globalThis.TEST_DXA = { DXA_IN, dxa, CALC };',
-    sandbox,
-    { filename: 'index.html:DXA' },
-  );
-  return sandbox.TEST_DXA;
-}
-
-const { DXA_IN, dxa, CALC } = loadDxa();
+const calculatorsPath = path.join(root, 'assets', 'js', 'calculators.js');
+const window = {};
+vm.runInNewContext(fs.readFileSync(calculatorsPath, 'utf8'), { window }, { filename: calculatorsPath });
+const { CALC } = window.RH_CALCULATORS;
 
 function inputs(fields = {}) {
-  return DXA_IN.map(name => Object.hasOwn(fields, name) ? fields[name] : NaN);
+  return CALC['КРИТЕРИЙ'].inputs.map(name => Object.hasOwn(fields, name) ? fields[name] : NaN);
 }
 
 function toggles(overrides = {}) {
@@ -51,10 +35,11 @@ const description = template.split(/^Заключение:/m)[0];
 const conclusion = template.split(/^Заключение:/m)[1]?.split(/^Рекомендации:/m)[0] || '';
 
 test('Критерий для женщин определяется менопаузой, для мужчин границей 50 лет', () => {
-  assert.equal(dxa(inputs({ Возраст: 42 }), toggles()).crit, 'T');
-  assert.equal(dxa(inputs({ Возраст: 42 }), toggles({ менопауза: 1 })).crit, 'Z');
-  assert.equal(dxa(inputs({ Возраст: 49 }), toggles({ пол: 1 })).crit, 'Z');
-  assert.equal(dxa(inputs({ Возраст: 50 }), toggles({ пол: 1 })).crit, 'T');
+  const criterion = (age, state) => CALC['КРИТЕРИЙ'].text(inputs({ Возраст: age }), toggles(state));
+  assert.equal(criterion(42), 'T-критерий');
+  assert.equal(criterion(42, { менопауза: 1 }), 'Z-критерий');
+  assert.equal(criterion(49, { пол: 1 }), 'Z-критерий');
+  assert.equal(criterion(50, { пол: 1 }), 'T-критерий');
 });
 
 test('Разность T% и Z% выводится в процентных пунктах, включая малые изменения', () => {
