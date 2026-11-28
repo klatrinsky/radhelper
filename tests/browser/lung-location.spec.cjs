@@ -267,6 +267,64 @@ test('формулировка начинается с локализации, �
   await expect.poll(clipboard).toBe('На момент текущего исследования очаговых и инфильтративных изменений не выявлено.');
 });
 
+test('после очистки поиска сохраняются текст и находка каждой вкладки до явного сброса', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/');
+  const search = page.getByRole('searchbox', { name: 'Поиск' });
+  const study = page.locator('#study');
+  const normal = study.getByRole('tab', { name: 'Норма', exact: true });
+  const detailed = study.getByRole('tab', { name: 'Подробно', exact: true });
+  const findings = study.getByLabel('Дополнительные находки');
+  const rightS8 = area(page, 'front', 'segments', 'right-s8');
+  const normalText = 'Тестовый текст в норме.';
+  const detailedText = 'Тестовый текст в подробном варианте.';
+  const finding = 'В сегменте S8 нижней доли правого легкого определяется очаговая тень.';
+  const summary = 'Рентгенологические признаки очаговой тени S8 правого легкого.';
+  const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
+  const copyProtocol = study.getByRole('button', { name: 'Скопировать протокол', exact: true });
+  const copyConclusion = study.getByRole('button', { name: 'Скопировать заключение', exact: true });
+
+  await search.fill('рентген огк');
+  await expect(study).toHaveAttribute('data-src', 'content/templates/xr-chest.md');
+  await expect(findings).toHaveValue('');
+  await findings.fill(normalText);
+  await study.getByText('Схема лёгких', { exact: true }).click();
+  await rightS8.press('Enter');
+  await form(page).getByRole('combobox', { name: 'Находка', exact: true }).selectOption('focus');
+  await save(page);
+  await detailed.click();
+  await expect(findings).toHaveValue('');
+  await findings.fill(detailedText);
+
+  await search.clear();
+  await expect(study).toBeHidden();
+  await search.fill('рентген огк');
+  await expect(study).toBeVisible();
+  await normal.click();
+  await expect(findings).toHaveValue(normalText);
+  await expect(rightS8).toHaveAttribute('data-recorded', '');
+  await copyProtocol.click();
+  await expect.poll(clipboard).toContain(finding);
+  expect(await clipboard()).toContain(normalText);
+  await copyConclusion.click();
+  await expect.poll(clipboard).toContain(summary);
+
+  await detailed.click();
+  await expect(findings).toHaveValue(detailedText);
+  await expect(rightS8).toHaveCount(0);
+  await normal.click();
+  await study.getByRole('button', { name: 'Сбросить', exact: true }).click();
+  await expect(findings).toHaveValue('');
+  await expect(rightS8).toHaveCount(0);
+  await copyProtocol.click();
+  await expect.poll(clipboard).not.toContain(finding);
+  expect(await clipboard()).not.toContain(normalText);
+  await copyConclusion.click();
+  await expect.poll(clipboard).toBe('На момент текущего исследования очаговых и инфильтративных изменений не выявлено.');
+  await detailed.click();
+  await expect(findings).toHaveValue(detailedText);
+});
+
 test('заключение различает долю, лёгочное поле и находку со свободным текстом', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/?protocol=xr-chest');

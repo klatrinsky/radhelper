@@ -76,16 +76,45 @@
     };
   }
 
-  const readList = (dir, read) => fetch(dir + "order.txt", { cache: "no-cache" })
-    .then(r => r.ok ? r.text() : "").then(txt => {
-      const files = orderFiles(txt);
-      return Promise.all(files.map(f => fetch(dir + f, { cache: "no-cache" })
-        .then(r => r.ok ? r.text() : null).then(t => t === null ? null : read(f, t), () => null)));
-    }, () => []);
-
-  function loadVariants() {
-    return Promise.all([readList(TEMPLATE_DIR, readTemplate), readList(FINDINGS_DIR, readTool)]);
+  const variantSources = [[TEMPLATE_DIR, readTemplate], [FINDINGS_DIR, readTool]];
+  const variantFiles = new Map();
+  function getVariantFile(path) {
+    if (!variantFiles.has(path)) {
+      variantFiles.set(path, fetch(path, { cache: "no-cache" }).then(response => {
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.text();
+      }).catch(error => {
+        variantFiles.delete(path);
+        throw error;
+      }));
+    }
+    return variantFiles.get(path);
   }
 
-  window.RH_LOADER = { GUIDE_DIR, TEMPLATE_DIR, FINDINGS_DIR, loadGuides, loadVariants, createHintReader };
+  const readOrder = dir => getVariantFile(dir + "order.txt").then(orderFiles);
+  const readVariant = (dir, read, file) => getVariantFile(dir + file).then(text => {
+    const variant = read(file, text);
+    if (!variant) {
+      variantFiles.delete(dir + file);
+      throw new Error("Некорректный файл " + dir + file);
+    }
+    return variant;
+  });
+
+  async function loadProtocol(id) {
+    if (!/^[a-z0-9_-]+$/i.test(id)) return null;
+    for (const [dir, read] of variantSources) {
+      const files = await readOrder(dir);
+      const file = files.find(name => name.replace(/\.md$/i, "") === id);
+      if (file) return readVariant(dir, read, file);
+    }
+    return null;
+  }
+
+  function loadVariants() {
+    return Promise.all(variantSources.map(([dir, read]) => readOrder(dir)
+      .then(files => Promise.all(files.map(file => readVariant(dir, read, file).catch(() => null))), () => [])));
+  }
+
+  window.RH_LOADER = { GUIDE_DIR, TEMPLATE_DIR, FINDINGS_DIR, loadGuides, loadProtocol, loadVariants, createHintReader };
 })();

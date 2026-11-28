@@ -404,13 +404,16 @@
   .call { display: block; margin: 12px 0 4px; padding: 14px; border-radius: 12px; background: #c0261b; color: #fff;
     text-align: center; font-size: 1.2rem; font-weight: 700; text-decoration: none; }
   .call .nw { white-space: nowrap; }
-  body.lab:not(.home) main { padding-bottom: 84px; }   /* чтобы SOS не закрывал конец текста */
+  @media screen {
+    body.lab:not(.home) main { padding-bottom: 84px; }   /* чтобы SOS не закрывал конец текста */
+  }
   .print-btn { margin: 14px 0 2px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 10px;
     background: var(--card); color: var(--ink); font: inherit; font-size: 0.9rem; cursor: pointer; }
   /* Печать плаката: только выбранный экстренный раздел, крупно, без кнопок и подвала */
   @media print {
     body.print-sos header, body.print-sos footer, body.print-sos #note, body.print-sos #study,
-    body.print-sos #none, body.print-sos details.sec:not(.print-me), body.print-sos button { display: none !important; }
+    body.print-sos #none, body.print-sos .feedback-help, body.print-sos details.sec:not(.print-me),
+    body.print-sos button { display: none !important; }
     body.print-sos { background: #fff; color: #000; }
     body.print-sos details.sec.print-me { border: 0; margin: 0; }
     body.print-sos .print-me > summary { padding: 0 0 6px; }

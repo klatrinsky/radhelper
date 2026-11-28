@@ -28,6 +28,9 @@ test("объём эллипсоида, КТИ, индекс Эванса", () =>
   assert.equal(f("ЭВАНС", 30, 100), 0.3);
   assert.equal(pick("ЭВАНС", 0.3), 0);                               // > 0,3 — расширены, 0,30 — ещё норма
   assert.equal(pick("ЭВАНС", 0.31), 1);
+  for (const [horns, skull] of [[180, 150], [150, 150], [30, 0], [0, 150], [-1, 150], [30, -150]]) {
+    assert.ok(Number.isNaN(f("ЭВАНС", horns, skull)), `${horns}/${skull}`);
+  }
 });
 
 test("L1 HU ≤ 110 — остеопороз; ADI > 2 мм — расширен", () => {
@@ -51,8 +54,12 @@ test("компрессионный перелом: снижение высоты
   assert.equal(g(12, 20), "2");                                      // 40%
   assert.equal(g(11.8, 20), "3");                                    // 41%
   assert.equal(g(21, 20), "");                                       // снижённая выше должной — не считаем
-  assert.equal(pick("ВЫСОТА 1", 19), 1);                             // < 20% — «нельзя исключить грыжу Шморля»
-  assert.equal(pick("ВЫСОТА 1", 20), 0);
+  for (let i = 1; i <= 6; i++) {
+    const heightLoss = C["ВЫСОТА " + i];
+    assert.equal(Math.round(heightLoss.f(16.2, 20)), 19);
+    assert.equal(Math.round(heightLoss.f(14, 20)), 30);
+    assert.equal(heightLoss.toggle, undefined);
+  }
 });
 
 test("КТ-перфузия: отношения и словесная картина, порог ± 10%", () => {
@@ -345,7 +352,7 @@ test("DXA: свёрнутые данные сравнения участвуют
   const copy = t.tpl.text();
   const [description, conclusion] = copy.split("Заключение:");
   assert.doesNotMatch(description, /15\.01\.2026|92%|Данные предыдущего исследования|BMD/);
-  assert.match(conclusion, /от 15\.01\.2026.*\+4,5 п\. п\./);
+  assert.match(conclusion, /от 15\.01\.2026\.\nИзменение T% в поясничном отделе позвоночника \+4,5 п\. п\./);
   previous.open = false;
   assert.equal(t.tpl.text(), copy);
 });

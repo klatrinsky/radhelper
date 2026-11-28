@@ -13,6 +13,13 @@
     return { units: BigInt(whole + fraction), precision: fraction.length };
   }
 
+  function parseEvansLength(value) {
+    const decimal = value.trim().replace(",", ".");
+    if (!/^\+?(?:\d+(?:\.\d*)?|\.\d+)$/.test(decimal)) return undefined;
+    const length = Number(decimal);
+    return Number.isFinite(length) && length > 0 ? length : undefined;
+  }
+
   function agatstonReport(scores) {
     if (scores.some(score => score === undefined)) return "";
     // Суммируем десятичные значения точно, чтобы ошибка округления не меняла категорию у порога.
@@ -46,10 +53,10 @@
       text: ([d], tg) => tg("аорта") === 1 && Number.isFinite(d) && d > 40 ? "Расширение восходящей аорты." : "" },
     "ВЫВОД ЛЁГОЧНЫЙ СТВОЛ": { inputs: ["Диаметр лёгочного ствола"], uses: ["лёгочный ствол"], raw: true, optional: true,
       text: ([d], tg) => tg("лёгочный ствол") === 1 && Number.isFinite(d) && d > 30 ? "Косвенные признаки лёгочной гипертензии." : "" },
-    "ЭВАНС":  { inputs: ["Рога", "Череп"], digits: 2,                 // индекс Эванса: передние рога / внутренний поперечник черепа
-      f: (horns, skull) => horns / skull,
-      // сам ставит переключатель {#желудочки: норма|расширены}: > 0,3 — второй вариант
-      toggle: "желудочки", pick: x => x > 0.3 ? 1 : 0 },
+    "ЭВАНС":  { inputs: ["Рога", "Череп"], digits: 2, parseInput: parseEvansLength,
+      f: (horns, skull) => Number.isFinite(skull) && horns > 0 && horns < skull ? horns / skull : NaN,
+      // Переключатель использует отображаемый индекс: расширение при значении > 0,30.
+      toggle: "желудочки", pick: x => x > 0.3 ? 1 : 0, reset: true },
     // поле называется «L1 HU», а не «L1»: иначе [L1] в «Снижение высоты тела [L1] позвонка» становилось полем плотности
     "L1 HU":  { inputs: ["L1 HU"], digits: 0,                         // плотность тела L1, HU (Pickhardt 2013)
       f: hu => hu,
@@ -74,14 +81,13 @@
   });
 
   // Компрессионный перелом: снижение высоты тела позвонка, % = (1 − снижённая / должная) × 100, и степень по Genant (1993):
-  // < 20% — 0 (не перелом: в тексте «нельзя исключить грыжу Шморля»), 20–25% — 1, 25–40% — 2, > 40% — 3. Поля [h 1] (снижённая, мм) и [H 1] (должная: задний отдел
+  // После округления: < 20% — 0, 20–25% — 1, 26–40% — 2, > 40% — 3. Морфологический вывод выбирается вручную.
+  // Поля [h 1] (снижённая, мм) и [H 1] (должная: задний отдел
   // того же тела или соседний неизменённый позвонок, мм); калькуляторы {{ВЫСОТА 1}} и {{GENANT 1}}. В сборном протоколе номера 4–6 отведены поясничному отделу.
   const genant = x => x < 20 ? "0" : x <= 25 ? "1" : x <= 40 ? "2" : "3";
   const loss = (h, H) => (1 - h / H) * 100;
   [1, 2, 3, 4, 5, 6].forEach(i => {
-    // < 20% — по Genant не перелом: сам ставит {#Шморль 1: перелом|нельзя исключить грыжу Шморля}
-    CALC["ВЫСОТА " + i] = { inputs: ["h " + i, "H " + i], digits: 0, f: loss,
-      toggle: "Шморль " + i, pick: x => x < 20 ? 1 : 0, reset: true };
+    CALC["ВЫСОТА " + i] = { inputs: ["h " + i, "H " + i], digits: 0, f: loss };
     CALC["GENANT " + i] = { inputs: ["h " + i, "H " + i], text: (h, H) => h <= H ? genant(Math.round(loss(h, H))) : "" };
     PH_MM.push("h " + i, "H " + i);
   });

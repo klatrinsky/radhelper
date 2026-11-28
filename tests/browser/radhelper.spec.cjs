@@ -190,21 +190,57 @@ test('прямая ссылка открывает выбранную вклад
   }
 });
 
-test('заполнение размеров обновляет описание и заключение', async ({ page }) => {
-  await page.goto(brainProtocol);
-  const horns = page.getByRole('textbox', { name: 'Рога', exact: true });
-  const skull = page.getByRole('textbox', { name: 'Череп', exact: true });
-  const conclusion = page.locator('#study .tpl-conclusion');
-  await expect(horns).toHaveValue('');
-  await expect(skull).toHaveValue('');
-  await expect(conclusion).not.toContainText('Вентрикуломегалия', { useInnerText: true });
+for (const protocol of [brainProtocol, '/?protocol=ct-brain']) {
+  test(`индекс Эванса проверяет размеры и обновляет описание и заключение (${protocol})`, async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto(protocol);
+    const horns = page.getByRole('textbox', { name: 'Рога', exact: true });
+    const skull = page.getByRole('textbox', { name: 'Череп', exact: true });
+    const template = page.locator('#study .tpl');
+    const conclusion = template.locator('.tpl-conclusion');
+    const protocolButton = page.locator('#study .copy');
+    const conclusionButton = page.locator('#study .copy-conclusion');
+    const copy = async (button, expected) => {
+      await page.evaluate(() => navigator.clipboard.writeText(''));
+      await button.click();
+      if (await button.innerText() === 'Всё равно скопировать') await button.click();
+      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain(expected);
+      return page.evaluate(() => navigator.clipboard.readText());
+    };
+    const missing = async () => {
+      await expect(template).toContainText('Желудочки не расширены, индекс Эванса __', { useInnerText: true });
+      await expect(conclusion).not.toContainText('Вентрикуломегалия', { useInnerText: true });
+    };
+    await expect(horns).toHaveValue('');
+    await expect(skull).toHaveValue('');
+    await missing();
 
-  await horns.fill('32');
-  await skull.fill('100');
+    await skull.fill('100');
+    for (const [width, index] of [['29,4', '0,29'], ['29,6', '0,30'], ['30', '0,30'], ['30,4', '0,30']]) {
+      await horns.fill(width);
+      await expect(template).toContainText(`Желудочки не расширены, индекс Эванса ${index}`, { useInnerText: true });
+      await expect(conclusion).not.toContainText('Вентрикуломегалия', { useInnerText: true });
+    }
+    await horns.fill('30,6');
+    await expect(template).toContainText('Боковые желудочки расширены, индекс Эванса 0,31', { useInnerText: true });
+    await expect(conclusion).toContainText('Вентрикуломегалия (индекс Эванса 0,31).', { useInnerText: true });
+    await copy(protocolButton, 'Боковые желудочки расширены, индекс Эванса 0,31');
+    await copy(conclusionButton, 'Вентрикуломегалия (индекс Эванса 0,31).');
 
-  await expect(page.locator('#study .tpl')).toContainText('Боковые желудочки расширены, индекс Эванса 0,32', { useInnerText: true });
-  await expect(conclusion).toContainText('Вентрикуломегалия (индекс Эванса 0,32).', { useInnerText: true });
-});
+    await horns.clear();
+    await missing();
+    for (const [width, diameter] of [['180', '150'], ['32', '0'], ['0', '150'], ['-32', '150'], ['32мм', '100']]) {
+      await skull.fill('100');
+      await horns.fill('32');
+      await expect(conclusion).toContainText('Вентрикуломегалия (индекс Эванса 0,32).', { useInnerText: true });
+      await skull.fill(diameter);
+      await horns.fill(width);
+      await missing();
+    }
+    await copy(protocolButton, 'Желудочки не расширены, индекс Эванса [__]');
+    expect(await copy(conclusionButton, 'КТ-признаков острой интракраниальной патологии не выявлено.')).not.toContain('Вентрикуломегалия');
+  });
+}
 
 test('атлас GCA и схема Эванса загружаются при открытии своей подсказки', async ({ page }) => {
   const imageRequests = [];
@@ -261,26 +297,41 @@ test('на обоих входах печатается выбранная эк�
   let printCalls = 0;
   await page.exposeFunction('recordPrint', () => { printCalls++; });
   await page.addInitScript(() => { window.print = () => window.recordPrint(); });
-  await page.emulateMedia({ media: 'print' });
 
-  for (const [url, id] of [['/#sos-anaphylaxis', 'sos-anaphylaxis'], ['/?lab', 'sos-extravasation']]) {
+  for (const [url, id] of [
+    ['/#sos-anaphylaxis', 'sos-anaphylaxis'],
+    ['/?lab', 'sos-anaphylaxis'],
+    ['/?lab', 'sos-extravasation'],
+  ]) {
+    await page.emulateMedia({ media: 'screen' });
     await page.goto(url);
     if (url === '/?lab') {
-      await page.locator('#sosLinks').getByRole('button', { name: 'Экстравазация' }).click();
+      await page.locator(`#sosLinks button[data-id="${id}"]`).click();
     }
     const guide = page.locator('#' + id);
     const print = guide.getByRole('button', { name: /Распечатать на стену/ });
+    const anaphylaxisText = id === 'sos-anaphylaxis' ? [
+      'Памятка для взрослых и детей с подозрением на анафилаксию после введения контраста.',
+      'Дети до 6 лет — 0,15 мг = 0,15 мл.',
+      'Дети 6–12 лет — 0,3 мг = 0,3 мл.',
+      'Взрослые — 0,5 мг = 0,5 мл.',
+      'В КР 263_2 отдельный максимум для детей старше 12 лет не указан. Дозу определяет врач.',
+    ] : [];
+    for (const line of anaphylaxisText) await expect(guide.getByText(line, { exact: true })).toBeVisible();
     await expect(print).toBeVisible();
     const expectedCalls = printCalls + 1;
     await print.click();
     await expect.poll(() => printCalls).toBe(expectedCalls);
+    await page.emulateMedia({ media: 'print' });
     await expect(page.locator('body')).toHaveClass(/\bprint-sos\b/);
     await expect(page.locator('.print-me')).toHaveCount(1);
     await expect(guide).toHaveClass(/\bprint-me\b/);
     await expect(guide.locator('.body')).toBeVisible();
     await expect(page.locator('header')).toBeHidden();
+    await expect(page.locator('#list + .feedback-help')).toBeHidden();
     await expect(page.locator('details.sec.sos:not(.print-me)')).toBeHidden();
     await expect(print).toBeHidden();
+    for (const line of anaphylaxisText) await expect(guide.getByText(line, { exact: true })).toBeVisible();
 
     await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
     await expect(page.locator('body')).not.toHaveClass(/\bprint-sos\b/);
